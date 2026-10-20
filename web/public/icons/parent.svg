@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1B3440"/>
+  <text x="256" y="238" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="150" fill="#F4F0E6" letter-spacing="4">НА</text>
+  <circle cx="378" cy="152" r="16" fill="#B8964F"/>
+  <text x="256" y="382" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="118" fill="#F4F0E6" letter-spacing="2">МЕСТЕ</text>
+</svg>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>НА МЕСТЕ</title>
+    <meta name="theme-color" content="#1B3440" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="НА МЕСТЕ" />
+    <link id="manifest" rel="manifest" href="/manifest-parent.webmanifest" />
+    <link id="touch-icon" rel="apple-touch-icon" href="/icons/parent-180.png" />
+    <link rel="icon" type="image/png" href="/icons/parent-192.png" />
+    <script>
+      // Водитель ставит на экран «Домой» своё приложение: другой значок, название и стартовая страница.
+      if (location.pathname.startsWith('/driver')) {
+        document.getElementById('manifest').href = '/manifest-driver.webmanifest';
+        document.getElementById('touch-icon').href = '/icons/driver-180.png';
+        document.querySelector('meta[name="apple-mobile-web-app-title"]').content = 'Водитель';
+        document.querySelector('meta[name="theme-color"]').content = '#0F1E24';
+        document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content = 'black';
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

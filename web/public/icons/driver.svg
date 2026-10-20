@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0F1E24"/>
+  <text x="256" y="220" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="140" fill="#F4F0E6" letter-spacing="4">НА</text>
+  <circle cx="370" cy="140" r="15" fill="#B8964F"/>
+  <text x="256" y="345" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="108" fill="#F4F0E6" letter-spacing="2">МЕСТЕ</text>
+  <rect x="136" y="392" width="240" height="56" rx="28" fill="#B8964F"/>
+  <text x="256" y="431" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="34" fill="#1B1408" letter-spacing="3">ВОДИТЕЛЬ</text>
+</svg>

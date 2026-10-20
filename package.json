@@ -1,0 +1,53 @@
+{
+  "name": "na-meste",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "НА МЕСТЕ — развозка детей: сервер, веб-приложение родителя, водителя и диспетчера",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "server": "tsx watch server/index.ts",
+    "web": "vite",
+    "build": "vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "seed": "tsx server/seed.ts",
+    "bootstrap": "tsx server/bootstrap.ts",
+    "invite": "tsx server/invite.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/static": "^8.3.0",
+    "@fontsource/geologica": "^5.3.0",
+    "@fontsource/golos-text": "^5.3.0",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.3",
+    "fastify": "^5.12.5",
+    "maplibre-gl": "^5.24.0",
+    "nodemailer": "^6.10.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "tsx": "^4.23.15",
+    "web-push": "^3.6.7",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.20.4",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/web-push": "^3.6.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "~5.9",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  }
+}
