@@ -168,7 +168,7 @@ export function Board() {
         {day?.runs.map((r) => (
           <section key={r.id} style={{ display: 'grid', gap: 8 }}>
             <h3>
-              {r.vehicle} · {r.plate} · {r.driverName}{' '}
+              {[r.driverName, r.vehicle, r.plate].filter(Boolean).join(' · ')}{' '}
               <Tag tone={r.status === 'active' ? 'gold' : r.status === 'done' ? 'ok' : 'plan'}>{r.status === 'active' ? 'в пути' : r.status === 'done' ? 'завершён' : 'в плане'}</Tag>
             </h3>
             <table className="table">

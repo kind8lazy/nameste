@@ -1,13 +1,13 @@
 // Диспетчер: день целиком, семьи, места, шаблоны недели, приглашения.
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { config } from '../config';
 import { newId } from '../lib/ids';
 import { requireRole, createLoginCode, HttpError, isDemoUser } from '../modules/auth';
 import { adminDayView } from '../modules/views';
-import { planDay } from '../modules/planner';
+import { planDay, defaultDriverId } from '../modules/planner';
 import { materialize, setException } from '../modules/schedule';
 import { geocode } from '../modules/geo';
 import { placeInput, addFamilyPlace, requireFamilyPlace, requireFamilyChild, requireFamily, requireNoDuplicateTemplate } from '../modules/places';
@@ -222,8 +222,10 @@ export async function adminRoutes(app: FastifyInstance) {
         endDate: date.optional(),
         escort: z.enum(['to_door', 'to_entrance']).default('to_door'),
         priceRub: z.number().int().min(0).max(100_000).default(1000),
+        driverId: z.string().optional(),
       })
       .parse(req.body);
+    if (t.driverId) requireDriver(t.driverId);
     try {
       parseRule(t.rule); // проверка формата
     } catch {
@@ -238,6 +240,38 @@ export async function adminRoutes(app: FastifyInstance) {
     db.insert(schema.rideTemplates).values({ id, ...t }).run();
     const created = materialize();
     return { id, created };
+  });
+
+  /** Водители с машинами — для выбора, кто везёт. Первый в списке — основной. */
+  app.get('/admin/drivers', async () => {
+    const main = defaultDriverId();
+    return db
+      .select({ id: schema.users.id, name: schema.users.name, car: schema.vehicles.title, plate: schema.vehicles.plate })
+      .from(schema.drivers)
+      .innerJoin(schema.users, eq(schema.users.id, schema.drivers.userId))
+      .leftJoin(schema.vehicles, eq(schema.vehicles.id, schema.drivers.vehicleId))
+      .all()
+      .filter((d) => !isDemoUser(d.id) || config.demoMode)
+      .map((d) => ({ ...d, main: d.id === main }))
+      .sort((a, b) => Number(b.main) - Number(a.main) || a.name.localeCompare(b.name, 'ru'));
+  });
+
+  /** Сменить водителя поездки по расписанию: будущие поездки переходят к нему, рейсы пересобираются. */
+  app.post('/admin/templates/:id/driver', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { driverId } = z.object({ driverId: z.string().nullable() }).parse(req.body);
+    if (driverId) requireDriver(driverId);
+    const tpl = db.select().from(schema.rideTemplates).where(eq(schema.rideTemplates.id, id)).get();
+    if (!tpl) throw new HttpError(404, 'Поездка по расписанию не найдена');
+    db.update(schema.rideTemplates).set({ driverId }).where(eq(schema.rideTemplates.id, id)).run();
+    const future = db
+      .select()
+      .from(schema.rides)
+      .where(and(eq(schema.rides.templateId, id), gte(schema.rides.date, localDate()), eq(schema.rides.status, 'planned')))
+      .all();
+    if (future.length) db.update(schema.rides).set({ driverId }).where(inArray(schema.rides.id, future.map((r) => r.id))).run();
+    for (const d of new Set(future.map((r) => r.date))) planDay(d);
+    return { ok: true, moved: future.length };
   });
 
   app.post('/admin/templates/:id/exception', async (req) => {
@@ -332,4 +366,8 @@ export async function adminRoutes(app: FastifyInstance) {
       .run();
     return { ok: true };
   });
+}
+
+function requireDriver(userId: string) {
+  if (!db.select().from(schema.drivers).where(eq(schema.drivers.userId, userId)).get()) throw new HttpError(400, 'Это не водитель');
 }

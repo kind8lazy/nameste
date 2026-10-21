@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { useToast } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { PlaceForm, type PlacePayload } from '../../components/PlaceForm';
-import { MemberRow, NewTemplate, type Family, type Place, type Run } from './Clients';
+import { MemberRow, NewTemplate, useDrivers, driverLabel, type Family, type Place, type Run } from './Clients';
 
 interface PlaceRow extends Place {
   familyId: string | null;
@@ -19,6 +19,7 @@ export function FamilyCard() {
   const [places, setPlaces] = useState<PlaceRow[]>([]);
   const [codes, setCodes] = useState<Record<string, { code: string; link: string }>>({});
   const [copied, setCopied] = useState<string | null>(null);
+  const drivers = useDrivers();
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -230,10 +231,25 @@ export function FamilyCard() {
             {family.templates.length
               ? family.templates.map((t) => (
                   <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
-                    <span>
+                    <span style={{ flex: 1 }}>
                       {t.time} {family.children.find((c) => c.id === t.childId)?.firstName} · {t.ruleText}
                       {lite ? '' : ` · ${t.priceRub} ₽`}
                     </span>
+                    {drivers.length > 1 && (
+                      <select
+                        className="input"
+                        style={{ width: 'auto', maxWidth: 220 }}
+                        aria-label="Кто везёт"
+                        value={drivers.some((d) => d.id === t.driverId && !d.main) ? t.driverId! : ''}
+                        onChange={(e) => void run(() => api.post(`/admin/templates/${t.id}/driver`, { driverId: e.target.value || null }), 'Водитель назначен, рейсы пересобраны')}
+                      >
+                        {drivers.map((d) => (
+                          <option key={d.id} value={d.main ? '' : d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       className="btn small danger"
                       onClick={() => window.confirm('Остановить эту поездку по расписанию? Будущие поездки уберутся, прошлые останутся в истории.') && void run(() => api.del(`/admin/templates/${t.id}`), 'Поездка остановлена')}

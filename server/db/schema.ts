@@ -168,6 +168,8 @@ export const rideTemplates = sqliteTable(
     endDate: text('end_date'),
     escort: text('escort').$type<Escort>().notNull().default('to_door'),
     priceRub: integer('price_rub').notNull(),
+    /** кто возит; пусто — основной водитель */
+    driverId: text('driver_id').references(() => users.id, { onDelete: 'set null' }),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
     createdAt: createdAt(),
   },
@@ -253,6 +255,8 @@ export const rides = sqliteTable(
     escort: text('escort').$type<Escort>().notNull().default('to_door'),
     priceRub: integer('price_rub').notNull(),
     status: text('status').$type<RideStatus>().notNull().default('planned'),
+    /** кто везёт; пусто — основной водитель */
+    driverId: text('driver_id').references(() => users.id, { onDelete: 'set null' }),
     runId: text('run_id').references(() => runs.id, { onDelete: 'set null' }),
     pickupStopId: text('pickup_stop_id').references(() => stops.id, { onDelete: 'set null' }),
     dropoffStopId: text('dropoff_stop_id').references(() => stops.id, { onDelete: 'set null' }),

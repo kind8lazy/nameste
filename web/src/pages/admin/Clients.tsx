@@ -14,7 +14,7 @@ export interface Family {
   name: string;
   members: { userId: string; name: string; phone: string | null; email: string | null; yandex: boolean; relation: string; isOwner: boolean }[];
   children: { id: string; firstName: string; grade: string | null }[];
-  templates: { id: string; time: string; ruleText: string; priceRub: number; childId: string }[];
+  templates: { id: string; time: string; ruleText: string; priceRub: number; childId: string; driverId: string | null }[];
 }
 export interface Place {
   id: string;
@@ -513,6 +513,25 @@ function NewFamily({ run }: { run: Run }) {
   );
 }
 
+export interface DriverOption {
+  id: string;
+  name: string;
+  car: string | null;
+  plate: string | null;
+  main: boolean;
+}
+
+/** Водители для выбора «кто везёт»; первый — основной. */
+export function useDrivers() {
+  const [drivers, setDrivers] = useState<DriverOption[]>([]);
+  useEffect(() => {
+    api.get<DriverOption[]>('/admin/drivers').then(setDrivers).catch(() => setDrivers([]));
+  }, []);
+  return drivers;
+}
+
+export const driverLabel = (d: DriverOption) => [d.name, d.car, d.plate].filter(Boolean).join(' · ') + (d.main ? ' (основной)' : '');
+
 export function NewTemplate({ families, places, run, fixedFamilyId }: { families: Family[]; places: Place[]; run: Run; fixedFamilyId?: string }) {
   const lite = !!useAuth().me?.lite;
   const [familyId, setFamilyId] = useState(fixedFamilyId ?? '');
@@ -524,6 +543,8 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
   const [once, setOnce] = useState(false);
   const [days, setDays] = useState<number[]>([]);
   const [price, setPrice] = useState(1000);
+  const drivers = useDrivers();
+  const [driverId, setDriverId] = useState('');
   const family = families.find((f) => f.id === familyId);
   const rule = once ? 'ONCE' : formatRule({ freq: 'WEEKLY', interval: 1, byDay: days.length ? days : [weekday(date)] });
   return (
@@ -582,6 +603,18 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
           <label htmlFor="nt-time">Забрать в</label>
           <input id="nt-time" type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
+        {drivers.length > 1 && (
+          <div className="field">
+            <label htmlFor="nt-driver">Кто везёт</label>
+            <select id="nt-driver" className="input" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
+              {drivers.map((d) => (
+                <option key={d.id} value={d.main ? '' : d.id}>
+                  {driverLabel(d)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {!lite && (
           <div className="field">
             <label htmlFor="nt-price">Цена, ₽</label>
@@ -608,7 +641,7 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
         disabled={!familyId || !childId || !from || !to || from === to || !time}
         onClick={async () => {
           const added = await run(async () => {
-            await api.post('/admin/templates', { familyId, childId, fromPlaceId: from, toPlaceId: to, time, rule, startDate: date, ...(lite ? {} : { priceRub: price }) });
+            await api.post('/admin/templates', { familyId, childId, fromPlaceId: from, toPlaceId: to, time, rule, startDate: date, driverId: driverId || undefined, ...(lite ? {} : { priceRub: price }) });
             await api.post(`/admin/days/${date}/plan`);
           }, `Поездка ${time} добавлена. Форма готова для обратной поездки — укажите время.`);
           // после добавления форма сразу готова для обратной дороги: адреса меняются местами, время пустое
