@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/auth';
 import { Avatar, SwipeButton, Tag, useToast } from '../../components/ui';
 import { PushCard } from '../../components/PushCard';
 import { Link } from 'react-router-dom';
+import { RoleSwitch } from '../../components/RoleSwitch';
 import { plural } from '@shared/ru';
 import { Badge, useUnread } from '../../components/Chat';
 import type { ShiftView, StopView } from '@shared/api';
@@ -59,6 +60,7 @@ export function Shift() {
   return (
     <div className="app theme-driver">
       <main className="page" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
+        <RoleSwitch />
         <div className="page-head">
           <h1 className="page-title">Смена</h1>
           <span className="page-sub">{shift?.dayLabel}</span>

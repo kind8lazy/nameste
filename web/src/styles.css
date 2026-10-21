@@ -285,3 +285,11 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 @media (min-width: 900px) {
   .chat-head .btn { display: none; }
 }
+
+/* переключатель ролей у диспетчера */
+.role-switch { display: flex; gap: 4px; padding: 4px; margin: 0 0 12px; border-radius: 12px; background: rgba(127, 127, 127, 0.12); }
+.role-switch a { flex: 1; text-align: center; padding: 8px 4px; border-radius: 9px; font-size: 14px; font-weight: 500; color: inherit; text-decoration: none; }
+.role-switch a.active { background: #fff; color: #1d2b3a; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); font-weight: 600; }
+.desk-nav .role-switch { flex-direction: column; background: rgba(244, 240, 230, 0.08); }
+.desk-nav .role-switch a { text-align: left; padding: 7px 10px; }
+.desk-nav .role-switch a.active { box-shadow: none; }
