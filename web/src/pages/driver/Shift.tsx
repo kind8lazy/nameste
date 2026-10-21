@@ -10,6 +10,7 @@ import { PushCard } from '../../components/PushCard';
 import { Link } from 'react-router-dom';
 import { RoleSwitch } from '../../components/RoleSwitch';
 import { plural } from '@shared/ru';
+import { addDays, localDate, weekday, WEEKDAYS_SHORT } from '@shared/time';
 import { Badge, useUnread } from '../../components/Chat';
 import type { ShiftView, StopView } from '@shared/api';
 
@@ -20,15 +21,18 @@ export function Shift() {
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
   const { me, setMe } = useAuth();
+  const today = localDate();
+  const [date, setDate] = useState(today);
+  const isToday = date === today;
 
   const load = useCallback(async () => {
     try {
-      setShift(await api.get<ShiftView>('/driver/shift'));
+      setShift(await api.get<ShiftView>(`/driver/shift?date=${date}`));
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [date]);
   useEffect(() => {
     document.body.classList.add('theme-driver');
     document.documentElement.classList.add('theme-driver');
@@ -85,22 +89,32 @@ export function Shift() {
           Сообщения
           <Badge n={unread} />
         </Link>
+        <div className="day-pick" role="tablist" aria-label="День">
+          {Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((d, i) => (
+            <button key={d} role="tab" aria-selected={d === date} className={d === date ? 'on' : ''} onClick={() => setDate(d)}>
+              <small>{i === 0 ? 'сегодня' : i === 1 ? 'завтра' : WEEKDAYS_SHORT[weekday(d) - 1]}</small>
+              <b>{Number(d.slice(8))}</b>
+            </button>
+          ))}
+        </div>
         {error && <div className="note error">{error}</div>}
         {shift?.run && (
           <div className="page-sub">
             {[shift.run.vehicle, shift.run.plate, `${shift.stops.length} ${plural(shift.stops.length, ['точка', 'точки', 'точек'])}`, me?.name].filter(Boolean).join(' · ')}
           </div>
         )}
-        {!me?.lite && <Tracking shift={shift} />}
-        <PushCard compact />
-        {!shift ? (
+        {isToday && !me?.lite && <Tracking shift={shift} />}
+        {isToday && <PushCard compact />}
+        {!shift || shift.date !== date ? (
           <div className="empty">Загрузка…</div>
         ) : !shift.run ? (
-          <div className="card empty">Сегодня смены нет</div>
-        ) : (
+          <div className="card empty">{isToday ? 'Сегодня смены нет' : `${shift.dayLabel}: смены нет`}</div>
+        ) : isToday ? (
           shift.stops.map((s) => <StopCard key={s.id} stop={s} current={s.id === current?.id} act={act} />)
+        ) : (
+          <PlanList shift={shift} />
         )}
-        {shift?.run && !current && shift.stops.length > 0 && <div className="note plain">Все точки пройдены. Смена завершена.</div>}
+        {isToday && shift?.run && !current && shift.stops.length > 0 && <div className="note plain">Все точки пройдены. Смена завершена.</div>}
       </main>
       {toast.node}
     </div>
@@ -334,6 +348,30 @@ function Tracking({ shift }: { shift: ShiftView | null }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** Смена на другой день: только план, отмечать заранее нечего. */
+function PlanList({ shift }: { shift: ShiftView }) {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="note plain" style={{ margin: 12 }}>План может измениться: семьи ещё могут добавить или отменить поездки.</div>
+      {shift.stops.map((s) => (
+        <div key={s.id} className="plan-row">
+          <b className="mono">{s.plannedAt}</b>
+          <span>
+            <b>{s.kind === 'pickup' ? 'Забрать' : 'Высадить'}</b> · {s.place.name}
+            <br />
+            <small className="page-sub">
+              {s.rides
+                .filter((r) => r.status !== 'cancelled')
+                .map((r) => r.child.firstName)
+                .join(', ')}
+            </small>
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

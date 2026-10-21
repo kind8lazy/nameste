@@ -293,3 +293,11 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 .desk-nav .role-switch { flex-direction: column; background: rgba(244, 240, 230, 0.08); }
 .desk-nav .role-switch a { text-align: left; padding: 7px 10px; }
 .desk-nav .role-switch a.active { box-shadow: none; }
+
+/* выбор дня в смене водителя */
+.day-pick { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.day-pick button { flex: 1 1 0; min-width: 38px; display: grid; gap: 2px; justify-items: center; padding: 6px 4px; border-radius: 10px; border: 1px solid rgba(127, 127, 127, 0.25); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.day-pick button small { font-size: 11px; opacity: 0.75; }
+.day-pick button b { font-size: 16px; }
+.day-pick button.on { background: #fff; color: #1d2b3a; border-color: #fff; }
+.plan-row { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 10px 14px; border-top: 1px solid rgba(127, 127, 127, 0.18); }
