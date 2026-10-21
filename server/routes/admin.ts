@@ -96,8 +96,17 @@ export async function adminRoutes(app: FastifyInstance) {
       const prev = lastLogin.get(s.userId);
       if (!prev || s.createdAt > prev) lastLogin.set(s.userId, s.createdAt);
     }
+    const cars = new Map(
+      db
+        .select({ userId: schema.drivers.userId, title: schema.vehicles.title, plate: schema.vehicles.plate })
+        .from(schema.drivers)
+        .innerJoin(schema.vehicles, eq(schema.vehicles.id, schema.drivers.vehicleId))
+        .all()
+        .map((c) => [c.userId, `${c.title} · ${c.plate}`]),
+    );
     return users
       .map((u) => ({
+        car: cars.get(u.id) ?? null,
         id: u.id,
         name: u.name,
         roles: u.roles,

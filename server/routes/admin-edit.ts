@@ -122,8 +122,17 @@ export async function adminEditRoutes(app: FastifyInstance) {
         role: z.enum(['driver', 'dispatcher']),
         phone: z.string().trim().max(30).refine((v) => !v || normalizePhone(v), 'неверный номер, пример: +7 921 123-45-67').optional(),
         email: z.string().trim().email().max(120).optional().or(z.literal('')),
+        // у каждого водителя своя машина
+        car: z
+          .object({
+            title: z.string().trim().min(2, 'укажите марку и модель').max(60),
+            plate: z.string().trim().min(4, 'укажите госномер').max(15),
+            seats: z.number().int().min(1).max(8),
+          })
+          .optional(),
       })
       .parse(req.body);
+    if (b.role === 'driver' && !b.car) throw new HttpError(400, 'Укажите машину водителя: марку, госномер и число мест для детей.');
     const phone = b.phone ? formatPhone(b.phone) : null;
     for (const u of db.select().from(schema.users).all()) {
       if (isDemoUser(u.id)) continue;
@@ -132,8 +141,9 @@ export async function adminEditRoutes(app: FastifyInstance) {
     const userId = newId('u');
     db.insert(schema.users).values({ id: userId, name: b.name, phone, email: b.email?.toLowerCase() || null, roles: [b.role] }).run();
     if (b.role === 'driver') {
-      const vehicle = db.select().from(schema.vehicles).all().find((v) => v.available) ?? db.select().from(schema.vehicles).get();
-      db.insert(schema.drivers).values({ userId, vehicleId: vehicle?.id ?? null, trackerToken: newToken(12) }).run();
+      const vehicleId = newId('v');
+      db.insert(schema.vehicles).values({ id: vehicleId, title: b.car!.title, plate: b.car!.plate.toUpperCase(), seats: b.car!.seats }).run();
+      db.insert(schema.drivers).values({ userId, vehicleId, trackerToken: newToken(12) }).run();
     }
     return { userId };
   });

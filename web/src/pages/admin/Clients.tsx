@@ -175,6 +175,7 @@ interface Person {
   yandex: boolean;
   families: string[];
   lastLogin: string | null;
+  car: string | null;
 }
 
 const ROLE_RU: Record<string, string> = { dispatcher: 'диспетчер', driver: 'водитель', parent: 'родитель' };
@@ -193,11 +194,17 @@ function People() {
   const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState<'driver' | 'dispatcher'>('driver');
   const [staffPhone, setStaffPhone] = useState('');
+  const [carTitle, setCarTitle] = useState('');
+  const [carPlate, setCarPlate] = useState('');
+  const [carSeats, setCarSeats] = useState('4');
   const addStaff = async () => {
     try {
-      await api.post('/admin/staff', { name: staffName, role: staffRole, phone: staffPhone || undefined });
+      const car = staffRole === 'driver' ? { title: carTitle, plate: carPlate, seats: Number(carSeats) } : undefined;
+      await api.post('/admin/staff', { name: staffName, role: staffRole, phone: staffPhone || undefined, car });
       setStaffName('');
       setStaffPhone('');
+      setCarTitle('');
+      setCarPlate('');
       setError(null);
       load();
     } catch (e) {
@@ -248,10 +255,34 @@ function People() {
               <option value="dispatcher">диспетчер</option>
             </select>
           </div>
-          <button className="btn" disabled={staffName.trim().length < 2} onClick={addStaff}>
-            Добавить
-          </button>
         </div>
+        {staffRole === 'driver' && (
+          <div className="btn-row" style={{ flexWrap: 'wrap', alignItems: 'end' }}>
+            <div className="field">
+              <label htmlFor="car-title">Машина водителя</label>
+              <input id="car-title" className="input" value={carTitle} onChange={(e) => setCarTitle(e.target.value)} placeholder="Kia Carnival, белая" />
+            </div>
+            <div className="field">
+              <label htmlFor="car-plate">Госномер</label>
+              <input id="car-plate" className="input" value={carPlate} onChange={(e) => setCarPlate(e.target.value)} placeholder="А 123 ВС 178" />
+            </div>
+            <div className="field">
+              <label htmlFor="car-seats">Мест для детей</label>
+              <select id="car-seats" className="input" value={carSeats} onChange={(e) => setCarSeats(e.target.value)}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        <button
+          className="btn"
+          disabled={staffName.trim().length < 2 || (staffRole === 'driver' && (carTitle.trim().length < 2 || carPlate.trim().length < 4))}
+          onClick={addStaff}
+        >
+          Добавить
+        </button>
         <small className="page-sub">После добавления нажмите «Выдать код» в таблице ниже и отправьте код человеку.</small>
       </div>
       <table className="table">
@@ -269,7 +300,7 @@ function People() {
               <td>
                 <b>{p.name}</b>
                 <br />
-                <small className="page-sub">{[p.phone ? formatPhone(p.phone) : null, p.email, ...p.families].filter(Boolean).join(' · ') || '—'}</small>
+                <small className="page-sub">{[p.phone ? formatPhone(p.phone) : null, p.email, p.car, ...p.families].filter(Boolean).join(' · ') || '—'}</small>
               </td>
               <td>{p.roles.map((r) => ROLE_RU[r] ?? r).join(', ')}</td>
               <td>
