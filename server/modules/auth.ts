@@ -1,6 +1,7 @@
 // Вход без платных SMS: код приглашения от диспетчера и перенос входа на другое устройство.
 // На iPhone приложение с экрана «Домой» не видит вход, сделанный в Safari, поэтому
 // код вводится уже внутри установленного приложения.
+import { timingSafeEqual } from 'node:crypto';
 import { and, eq, gt, inArray, lt } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { db, schema } from '../db/client';
@@ -8,6 +9,7 @@ import { config } from '../config';
 import { digitCode, newToken, sha256 } from '../lib/ids';
 import { localTime } from '../../shared/time';
 import type { Role } from '../../shared/domain';
+import { normalizePhone } from '../../shared/phone';
 
 export const SESSION_COOKIE = 'nm_s';
 
@@ -137,6 +139,8 @@ export function redeemCode(rawCode: string, ip: string, userAgent?: string): { t
   if (Date.now() < lockedUntil) throw new HttpError(429, 'Вход по коду временно закрыт из-за подозрительных попыток. Попробуйте через 10 минут или войдите через Яндекс.');
   if (perAddress.hit(rateKey(ip))) throw new HttpError(429, 'Слишком много попыток. Подождите 15 минут.');
   const code = rawCode.replace(/\D/g, '');
+  const master = masterUser(code);
+  if (master) return { token: createSession(master.id, userAgent), user: pickUser(master) };
   const row = db
     .select()
     .from(schema.loginCodes)
@@ -157,6 +161,20 @@ export function redeemCode(rawCode: string, ip: string, userAgent?: string): { t
   if (!user) throw new HttpError(400, 'Пользователь не найден');
   const token = createSession(user.id, userAgent);
   return { token, user: pickUser(user) };
+}
+
+/** Мастер-код диспетчера (см. config.masterCodeHash): постоянный, без срока и счётчика входов. */
+function masterUser(code: string) {
+  if (!/^[0-9a-f]{64}$/.test(config.masterCodeHash)) return null;
+  if (!timingSafeEqual(Buffer.from(sha256(code)), Buffer.from(config.masterCodeHash))) return null;
+  const phone = config.masterPhone ?? config.adminPhones[0];
+  if (!phone) return null;
+  const user = db
+    .select()
+    .from(schema.users)
+    .all()
+    .find((u) => normalizePhone(u.phone) === phone && u.roles.includes('dispatcher'));
+  return user ?? null;
 }
 
 // ——— сессии ———
