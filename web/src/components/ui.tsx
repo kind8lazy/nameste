@@ -47,7 +47,7 @@ export function useToast() {
   const show = (t: string) => {
     setText(t);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setText(null), 3200);
+    timer.current = window.setTimeout(() => setText(null), 5500);
   };
   const node = text ? (
     <div className="toast" role="status">

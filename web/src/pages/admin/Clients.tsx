@@ -605,13 +605,19 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
       </div>
       <button
         className="btn"
-        disabled={!familyId || !childId || !from || !to || from === to}
-        onClick={() =>
-          run(async () => {
+        disabled={!familyId || !childId || !from || !to || from === to || !time}
+        onClick={async () => {
+          const added = await run(async () => {
             await api.post('/admin/templates', { familyId, childId, fromPlaceId: from, toPlaceId: to, time, rule, startDate: date, ...(lite ? {} : { priceRub: price }) });
             await api.post(`/admin/days/${date}/plan`);
-          }, 'Поездка добавлена в расписание')
-        }
+          }, `Поездка ${time} добавлена. Форма готова для обратной поездки — укажите время.`);
+          // после добавления форма сразу готова для обратной дороги: адреса меняются местами, время пустое
+          if (added) {
+            setFrom(to);
+            setTo(from);
+            setTime('');
+          }
+        }}
       >
         Добавить поездку
       </button>
