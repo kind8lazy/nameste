@@ -286,13 +286,6 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
   .chat-head .btn { display: none; }
 }
 
-/* переключатель ролей у диспетчера */
-.role-switch { display: flex; gap: 4px; padding: 4px; margin: 0 0 12px; border-radius: 12px; background: rgba(127, 127, 127, 0.12); }
-.role-switch a { flex: 1; text-align: center; padding: 8px 4px; border-radius: 9px; font-size: 14px; font-weight: 500; color: inherit; text-decoration: none; }
-.role-switch a.active { background: #fff; color: #1d2b3a; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); font-weight: 600; }
-.desk-nav .role-switch { flex-direction: column; background: rgba(244, 240, 230, 0.08); }
-.desk-nav .role-switch a { text-align: left; padding: 7px 10px; }
-.desk-nav .role-switch a.active { box-shadow: none; }
 
 /* выбор дня в смене водителя */
 .day-pick { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
@@ -307,3 +300,26 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 .absence-grid button { display: grid; justify-items: center; gap: 1px; padding: 6px 0; border-radius: 10px; border: 1px solid rgba(127, 127, 127, 0.25); background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .absence-grid button small { font-size: 11px; opacity: 0.7; }
 .absence-grid button.on { background: var(--navy, #1d2b3a); color: #fff; border-color: transparent; }
+
+/* ——— роль на весь экран: плашка вверху и рамка своего цвета (у кого несколько ролей) ——— */
+html.role-dispatcher { --role: #1b3440; --role-ink: #f4f0e6; --role-accent: #b8964f; }
+html.role-driver { --role: #c7702c; --role-ink: #fff; --role-accent: #0f1e24; }
+html.role-parent { --role: #b8964f; --role-ink: #241a07; --role-accent: #fff; }
+html.role-dispatcher body::after, html.role-driver body::after, html.role-parent body::after {
+  content: ''; position: fixed; inset: 0; border: 3px solid var(--role); pointer-events: none; z-index: 60;
+}
+.role-bar {
+  position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: calc(var(--safe-top, 0px) + 8px) 14px 8px; background: var(--role); color: var(--role-ink);
+}
+.role-bar-now { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: 14px; }
+.role-bar-now span { opacity: 0.8; }
+.role-bar-now b { font-family: var(--f-display); font-size: 17px; }
+.role-bar-section { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-bar-tabs { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: rgba(0, 0, 0, 0.18); }
+.role-bar-tabs a { padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; text-decoration: none; color: inherit; opacity: 0.85; }
+.role-bar-tabs a.on { background: var(--role-ink); color: var(--role); opacity: 1; font-weight: 600; }
+@media (max-width: 420px) {
+  .role-bar-tabs { width: 100%; }
+  .role-bar-tabs a { flex: 1; text-align: center; }
+}

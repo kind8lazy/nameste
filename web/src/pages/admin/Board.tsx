@@ -7,7 +7,6 @@ import { Avatar, Sheet, Tag, useToast } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
 import { Badge, useUnread } from '../../components/Chat';
 import { DemoCard } from '../../components/DemoCard';
-import { RoleSwitch } from '../../components/RoleSwitch';
 import { REQUEST_STATUS, CHANGE_STATUS, type RequestRow, type ChangeRow } from '../parent/Requests';
 import type { AdminDay, Position, RideView } from '@shared/api';
 import { addDays, localDate } from '@shared/time';
@@ -77,7 +76,6 @@ export function Board() {
         <div className="wordmark">
           НА<i />МЕСТЕ
         </div>
-        <RoleSwitch />
         <a className="active" href="#day">
           Диспетчерская
         </a>

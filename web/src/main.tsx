@@ -25,6 +25,7 @@ import { FamilyCard } from './pages/admin/FamilyCard';
 import { Track } from './pages/Track';
 import { Chat } from './pages/parent/Chat';
 import { StaffChat } from './pages/admin/StaffChat';
+import { RoleBar } from './components/RoleSwitch';
 
 function Home() {
   const { me, loading } = useAuth();
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
+        <RoleBar />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
