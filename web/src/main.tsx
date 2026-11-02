@@ -15,6 +15,7 @@ import { registerServiceWorker } from './lib/push';
 import { Login } from './pages/Login';
 import { ParentLayout } from './pages/parent/Layout';
 import { Today } from './pages/parent/Today';
+import { Home as ParentHome } from './pages/parent/Home';
 import { Week } from './pages/parent/Week';
 import { Family } from './pages/parent/Family';
 import { NewRide } from './pages/parent/NewRide';
@@ -52,7 +53,8 @@ createRoot(document.getElementById('root')!).render(
               </RequireRole>
             }
           >
-            <Route index element={<Today />} />
+            <Route index element={<ParentHome />} />
+            <Route path="today" element={<Today />} />
             <Route path="week" element={<Week />} />
             <Route path="family" element={<Family />} />
             <Route path="new" element={<NewRide />} />

@@ -323,3 +323,17 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
   .role-bar-tabs { width: 100%; }
   .role-bar-tabs a { flex: 1; text-align: center; }
 }
+
+/* ——— главная родителя: разделы плитками с живой подписью ——— */
+.tiles { display: grid; gap: 10px; }
+.tile {
+  display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; border: 1px solid var(--line);
+  background: var(--card); color: inherit; text-decoration: none; text-align: left; font: inherit; cursor: pointer; width: 100%;
+}
+.tile-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--gold-bg); color: var(--gold-ink); }
+.tile-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.tile-text b { font-family: var(--f-display); font-size: 17px; }
+.tile-text small { color: var(--mute); font-size: 14px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tile-chevron { color: var(--mute); font-size: 22px; flex: none; }
+.tile.accent { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); }
+.tile.accent .tile-text small { color: var(--gold-ink); font-weight: 500; }

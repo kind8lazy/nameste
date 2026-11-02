@@ -8,7 +8,7 @@ export function ParentLayout() {
       <Outlet />
       <nav className="tabbar" style={{ ['--tabs' as string]: 4 }} aria-label="Разделы">
         <NavLink to="/app" end>
-          Сегодня
+          Главная
         </NavLink>
         <NavLink to="/app/week">Неделя</NavLink>
         <NavLink to="/app/chat">

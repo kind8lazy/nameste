@@ -20,7 +20,8 @@ const SECTIONS: [RegExp, RoleKey, string][] = [
   [/^\/app\/family/, 'parent', 'Семья'],
   [/^\/app\/new/, 'parent', 'Новая поездка'],
   [/^\/app\/chat/, 'parent', 'Чат'],
-  [/^\/app/, 'parent', 'Сегодня'],
+  [/^\/app\/today/, 'parent', 'Сегодня'],
+  [/^\/app/, 'parent', 'Главная'],
 ];
 
 export function roleOfPath(path: string): { role: RoleKey; section: string } | null {
