@@ -22,6 +22,8 @@ import { NewRide } from './pages/parent/NewRide';
 import { Shift } from './pages/driver/Shift';
 import { DriverHome } from './pages/driver/Home';
 import { DispatcherHome } from './pages/admin/Home';
+import { Inbox } from './pages/admin/Inbox';
+import { Settings } from './pages/admin/Settings';
 import { Board } from './pages/admin/Board';
 import { Clients } from './pages/admin/Clients';
 import { FamilyCard } from './pages/admin/FamilyCard';
@@ -83,6 +85,22 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireRole roles={['dispatcher']}>
                 <Board />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/inbox"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <Inbox />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <Settings />
               </RequireRole>
             }
           />

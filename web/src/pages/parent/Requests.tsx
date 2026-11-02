@@ -20,6 +20,7 @@ export interface RequestRow {
   comment: string | null;
   status: 'new' | 'accepted' | 'declined';
   answer: string | null;
+  createdAt?: string;
 }
 
 export const REQUEST_STATUS = { new: ['plan', 'на рассмотрении'], accepted: ['ok', 'принята'], declined: ['alert', 'не принята'] } as const;
@@ -68,6 +69,7 @@ export interface ChangeRow {
   currentTime: string | null;
   reason: string | null;
   answer: string | null;
+  createdAt?: string;
 }
 
 export const CHANGE_STATUS = {

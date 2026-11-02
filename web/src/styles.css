@@ -488,3 +488,7 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
   color: var(--mute); font-variant-numeric: tabular-nums;
 }
 .page-clock time { color: var(--ink); }
+
+/* меню диспетчера: редкое — вниз */
+.desk-nav-bottom { margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(244, 240, 230, 0.12); display: grid; gap: 4px; }
+.desk-nav a small { opacity: 0.6; }

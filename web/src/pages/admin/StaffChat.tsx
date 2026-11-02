@@ -1,14 +1,14 @@
 // Сообщения для диспетчера и водителя: все семьи и чат команды.
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChatBrowser, Badge, useUnread } from '../../components/Chat';
+import { ChatBrowser } from '../../components/Chat';
 import { useAuth } from '../../lib/auth';
 import { Clock } from '../../components/Clock';
+import { DeskNav } from './DeskNav';
 
 /** Диспетчер видит это на компьютере с меню слева, водитель — на телефоне. */
 export function StaffChat() {
   const [params] = useSearchParams();
   const { me } = useAuth();
-  const unread = useUnread();
   const desk = !!me?.roles.includes('dispatcher');
   if (!desk) {
     return (
@@ -28,17 +28,7 @@ export function StaffChat() {
   }
   return (
     <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
-      <nav className="desk-nav">
-        <div className="wordmark">
-          НА<i />МЕСТЕ
-        </div>
-        <Link to="/admin">Диспетчерская</Link>
-        <Link to="/admin/clients">Клиенты</Link>
-        <a className="active">
-          Сообщения
-          <Badge n={unread} />
-        </a>
-      </nav>
+      <DeskNav />
       <main className="desk-main" style={{ maxWidth: 1100 }}>
         <div className="page-head">
           <Clock />

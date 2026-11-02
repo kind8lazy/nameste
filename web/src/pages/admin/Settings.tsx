@@ -1,0 +1,103 @@
+// Настройки диспетчера: то, что нужно редко, — журнал уведомлений и выход на всех устройствах.
+import { useEffect, useState } from 'react';
+import { api } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
+import { Clock } from '../../components/Clock';
+import { DeskNav } from './DeskNav';
+
+interface NotificationRow {
+  id: string;
+  userName?: string;
+  title: string;
+  body?: string;
+  status: string;
+  channel: string;
+  createdAt: string;
+}
+
+export function Settings() {
+  const { me, setMe } = useAuth();
+  const [log, setLog] = useState<NotificationRow[]>([]);
+  const [logins, setLogins] = useState(false);
+  useEffect(() => {
+    api
+      .get<NotificationRow[]>('/admin/notifications')
+      .then(setLog)
+      .catch(() => setLog([]));
+  }, []);
+  // уведомления о входе — служебные, по умолчанию прячем, чтобы видеть, что получили семьи
+  const shown = log.filter((n) => logins || !n.title.startsWith('Новый вход'));
+  return (
+    <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
+      <DeskNav />
+      <main className="desk-main" style={{ maxWidth: 820 }}>
+        <div className="page-head">
+          <Clock />
+          <h1 className="page-title">Настройки</h1>
+        </div>
+
+        <section style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <h3>Журнал уведомлений</h3>
+            <label className="page-sub" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input type="checkbox" checked={logins} onChange={(e) => setLogins(e.target.checked)} />
+              показывать входы в приложение
+            </label>
+          </div>
+          <div className="card" style={{ padding: 0, maxHeight: 460, overflow: 'auto' }}>
+            <table className="table" style={{ border: 0 }}>
+              <tbody>
+                {shown.slice(0, 60).map((n) => (
+                  <tr key={n.id}>
+                    <td className="mono" style={{ whiteSpace: 'nowrap' }}>
+                      {new Date(n.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td>
+                      {n.title}
+                      <br />
+                      <small className="page-sub">
+                        {n.userName} · {n.channel === 'email' ? 'письмо' : n.channel === 'sms' ? 'SMS' : 'в приложении'} ·{' '}
+                        {n.status === 'sent' ? 'отправлено' : n.status === 'no_device' ? 'приложение не установлено' : 'ошибка'}
+                      </small>
+                    </td>
+                  </tr>
+                ))}
+                {!shown.length && (
+                  <tr>
+                    <td className="page-sub">Пока пусто</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="card" style={{ padding: 16, display: 'grid', gap: 8, justifyItems: 'start' }}>
+          <b>Безопасность</b>
+          <span className="page-sub">Если пришло уведомление о входе, который сделали не вы, — выйдите на всех устройствах и войдите заново.</span>
+          <div className="btn-row" style={{ flex: 'none' }}>
+            <button
+              className="btn small secondary"
+              onClick={async () => {
+                await api.post('/auth/logout');
+                setMe(null);
+              }}
+            >
+              Выйти{me ? ` (${me.name})` : ''}
+            </button>
+            <button
+              className="btn small danger"
+              onClick={async () => {
+                if (!window.confirm('Выйти на всех устройствах? Войти можно будет снова через Яндекс или мастер-код.')) return;
+                await api.post('/auth/logout-all');
+                setMe(null);
+              }}
+            >
+              Выйти на всех устройствах
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

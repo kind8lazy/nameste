@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/auth';
 import { PlaceForm, type PlacePayload } from '../../components/PlaceForm';
 import { MemberRow, NewTemplate, useDrivers, driverLabel, type Family, type Place, type Run } from './Clients';
 import { Clock } from '../../components/Clock';
+import { DeskNav } from './DeskNav';
 
 interface PlaceRow extends Place {
   familyId: string | null;
@@ -61,18 +62,7 @@ export function FamilyCard() {
     }
   };
 
-  const nav = (
-    <nav className="desk-nav">
-      <div className="wordmark">
-        НА<i />МЕСТЕ
-      </div>
-      <Link to="/admin">Диспетчерская</Link>
-      <Link to="/admin/clients" className="active">
-        Клиенты
-      </Link>
-      <Link to="/admin/chat">Сообщения</Link>
-    </nav>
-  );
+  const nav = <DeskNav />;
 
   if (family === undefined) return <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>{nav}<main className="desk-main"><div className="empty">Загрузка…</div></main></div>;
   if (family === null)

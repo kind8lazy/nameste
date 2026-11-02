@@ -1,7 +1,7 @@
 // Клиенты: завести семью с почтой родителя, место по адресу и поездку. Этого достаточно,
 // чтобы после свайпа водителя «Передал» родителю ушло письмо «ребёнок на месте» на Яндекс Почту.
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { useToast } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
@@ -9,6 +9,7 @@ import { localDate, WEEKDAYS_SHORT, weekday } from '@shared/time';
 import { formatRule } from '@shared/recurrence';
 import { formatPhone } from '@shared/phone';
 import { Clock } from '../../components/Clock';
+import { DeskNav } from './DeskNav';
 
 export interface Family {
   id: string;
@@ -38,6 +39,13 @@ interface Status {
 }
 export function Clients() {
   const lite = !!useAuth().me?.lite;
+  const { hash } = useLocation();
+  // «Водители и доступ» в меню ведут сюда, к разделу #access
+  useEffect(() => {
+    if (!hash) return window.scrollTo(0, 0);
+    const t = window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    return () => window.clearTimeout(t);
+  }, [hash]);
   const [families, setFamilies] = useState<Family[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
@@ -71,14 +79,7 @@ export function Clients() {
 
   return (
     <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
-      <nav className="desk-nav">
-        <div className="wordmark">
-          НА<i />МЕСТЕ
-        </div>
-        <Link to="/admin">Диспетчерская</Link>
-        <a className="active">Клиенты</a>
-        <Link to="/admin/chat">Сообщения</Link>
-      </nav>
+      <DeskNav />
       <main className="desk-main" style={{ maxWidth: 980 }}>
         <div className="page-head">
           <Clock />

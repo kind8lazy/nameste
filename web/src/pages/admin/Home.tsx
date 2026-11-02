@@ -53,14 +53,14 @@ export function DispatcherHome() {
         </div>
         <nav className="tiles" aria-label="Разделы">
           <Tile
-            to="/admin#changes"
+            to="/admin/inbox"
             title="Просьбы родителей"
             sub={waiting.length ? `${waiting.length} ${plural(waiting.length, ['ждёт', 'ждут', 'ждут'])} решения · ${waiting[0].childName}: ${waiting[0].summary}` : 'Новых просьб нет'}
             accent={waiting.length > 0}
             icon={<IconClock />}
           />
           <Tile
-            to="/admin#requests"
+            to="/admin/inbox"
             title="Заявки на поездки"
             sub={
               newRequests.length
