@@ -7,7 +7,7 @@ import { useStream } from '../../lib/stream';
 import { groupTrips, tripState } from '../../lib/trips';
 import { Tag, useToast } from '../../components/ui';
 import { RideSheet } from './RideSheet';
-import { MyRequests } from './Requests';
+import { MyRequests, MyChanges, AbsenceSheet } from './Requests';
 import { Link } from 'react-router-dom';
 import type { RideView, WeekDay } from '@shared/api';
 import { addDays, formatDateRu, localDate, WEEKDAYS_SHORT, weekStart } from '@shared/time';
@@ -22,6 +22,7 @@ export function Week() {
   const [week, setWeek] = useState<WeekDay[] | null>(null);
   const [sheet, setSheet] = useState<RideView[] | null>(null);
   const toast = useToast();
+  const [absence, setAbsence] = useState(false);
   const monday = weekStart(selected);
 
   const load = useCallback(async () => {
@@ -132,7 +133,13 @@ export function Week() {
           + Новая поездка или маршрут
         </Link>
       )}
+      {canOrder && (
+        <button className="btn secondary block" onClick={() => setAbsence(true)}>
+          Ребёнка не будет…
+        </button>
+      )}
       {params.get('sent') && <div className="note">Заявка отправлена. Диспетчер ответит, уведомление придёт на телефон.</div>}
+      <MyChanges />
       <MyRequests />
       <div className="card" style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between' }}>
         <span>
@@ -141,6 +148,7 @@ export function Week() {
         {!me?.lite && <b className="mono">{total.toLocaleString('ru-RU')} ₽</b>}
       </div>
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={(m) => { toast.show(m); void load(); }} />
+      <AbsenceSheet open={absence} onClose={() => setAbsence(false)} onDone={(m) => { toast.show(m); void load(); }} />
       {toast.node}
     </main>
   );

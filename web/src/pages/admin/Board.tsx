@@ -8,7 +8,7 @@ import { MiniMap } from '../../components/MiniMap';
 import { Badge, useUnread } from '../../components/Chat';
 import { DemoCard } from '../../components/DemoCard';
 import { RoleSwitch } from '../../components/RoleSwitch';
-import { REQUEST_STATUS, type RequestRow } from '../parent/Requests';
+import { REQUEST_STATUS, CHANGE_STATUS, type RequestRow, type ChangeRow } from '../parent/Requests';
 import type { AdminDay, Position } from '@shared/api';
 import { addDays, localDate } from '@shared/time';
 
@@ -39,6 +39,7 @@ export function Board() {
   const [log, setLog] = useState<NotificationRow[]>([]);
   const [codes, setCodes] = useState<Record<string, string>>({});
   const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [changes, setChanges] = useState<ChangeRow[]>([]);
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -51,6 +52,7 @@ export function Board() {
     setFamilies(f);
     setLog(n);
     setRequests(await api.get<RequestRow[]>('/admin/requests'));
+    setChanges(await api.get<ChangeRow[]>('/admin/changes'));
   }, [date]);
   useEffect(() => {
     void load();
@@ -83,6 +85,7 @@ export function Board() {
           Сообщения
           <Badge n={unread} />
         </a>
+        <a href="#changes">Просьбы родителей</a>
         <a href="#requests">Заявки</a>
         <a href="#families">Семьи и коды входа</a>
         <a href="#log">Уведомления</a>
@@ -220,6 +223,14 @@ export function Board() {
 
       <aside className="desk-side">
         {!lite && <DemoCard />}
+        <h3 id="changes">Просьбы родителей {changes.filter((c) => c.status === 'new').length ? `(${changes.filter((c) => c.status === 'new').length})` : ''}</h3>
+        {!changes.some((c) => c.status === 'new') && <div className="page-sub">Новых просьб нет</div>}
+        {changes
+          .filter((c) => c.status === 'new')
+          .concat(changes.filter((c) => c.status !== 'new' && c.status !== 'withdrawn').slice(0, 3))
+          .map((c) => (
+            <ChangeCard key={c.id} c={c} onDone={(m) => { toast.show(m); void load(); }} />
+          ))}
         <h3 id="requests">Заявки {requests.filter((r) => r.status === 'new').length ? `(${requests.filter((r) => r.status === 'new').length})` : ''}</h3>
         {!requests.length && <div className="page-sub">Пока заявок нет</div>}
         {requests.slice(0, 8).map((r) => (
@@ -323,6 +334,76 @@ export function Board() {
         </div>
       </aside>
       {toast.node}
+    </div>
+  );
+}
+
+/** Просьба родителя: принять как есть, принять со своим временем или отказать с причиной. */
+function ChangeCard({ c, onDone }: { c: ChangeRow; onDone: (msg: string) => void }) {
+  const [mode, setMode] = useState<'time' | 'decline' | null>(null);
+  const [time, setTime] = useState(c.time ?? '');
+  const [answer, setAnswer] = useState('В это время водитель занят.');
+  const call = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn();
+      onDone(ok);
+    } catch (e) {
+      onDone(e instanceof ApiError ? e.message : 'Не получилось');
+    }
+  };
+  return (
+    <div className="card" style={{ padding: 12, display: 'grid', gap: 6, boxShadow: c.status === 'new' ? 'inset 3px 0 0 #B8964F' : undefined }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+        <b>{c.title[0].toUpperCase() + c.title.slice(1)}</b>
+        <span className={`tag tone-${CHANGE_STATUS[c.status][0]}`}>{CHANGE_STATUS[c.status][1]}</span>
+      </div>
+      <small className="page-sub">
+        {c.familyName} · {c.summary}
+        {c.reason ? ` · ${c.reason}` : ''}
+      </small>
+      {c.answer && <small>Ответ: {c.answer}</small>}
+      {c.status === 'new' && !mode && (
+        <div className="btn-row" style={{ flexWrap: 'wrap' }}>
+          <button className="btn small" onClick={() => void call(() => api.post(`/admin/changes/${c.id}/accept`), 'Принято, рейс пересобран, семья получила ответ')}>
+            Принять
+          </button>
+          {c.kind === 'time' && (
+            <button className="btn small secondary" onClick={() => setMode('time')}>
+              Другое время
+            </button>
+          )}
+          <button className="btn small secondary" onClick={() => setMode('decline')}>
+            Отказать
+          </button>
+        </div>
+      )}
+      {mode === 'time' && (
+        <div className="btn-row" style={{ alignItems: 'end' }}>
+          <div className="field">
+            <label htmlFor={`ct-${c.id}`}>Могу забрать в</label>
+            <input id={`ct-${c.id}`} type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+          <button className="btn small" disabled={!time} onClick={() => void call(() => api.post(`/admin/changes/${c.id}/accept`, { time }), `Принято на ${time}, семья получила ответ`)}>
+            Принять на {time || '…'}
+          </button>
+          <button className="btn small secondary" onClick={() => setMode(null)}>
+            Назад
+          </button>
+        </div>
+      )}
+      {mode === 'decline' && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <input className="input" aria-label="Причина отказа" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+          <div className="btn-row">
+            <button className="btn small" disabled={answer.trim().length < 3} onClick={() => void call(() => api.post(`/admin/changes/${c.id}/decline`, { answer }), 'Семья получила ответ')}>
+              Отправить отказ
+            </button>
+            <button className="btn small secondary" onClick={() => setMode(null)}>
+              Назад
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

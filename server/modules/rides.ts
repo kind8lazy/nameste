@@ -17,6 +17,7 @@ import { eventMessage, smsText, type MessageContext } from '../../shared/message
 import { smsFamily } from './sms';
 import { emailFamily } from './mail';
 import { localTime } from '../../shared/time';
+import { pendingByRide } from './changes';
 import type { ChildView, DriverView, PlaceView, RideView } from '../../shared/api';
 
 type RideRow = typeof schema.rides.$inferSelect;
@@ -88,6 +89,7 @@ export function rideViews(rows: RideRow[]): RideView[] {
     times.set(e.rideId, t);
   }
 
+  const pending = pendingByRide(ids);
   return rows.map((r) => {
     const kid = kids.get(r.childId)!;
     const pickup = r.pickupStopId ? stops.get(r.pickupStopId) : undefined;
@@ -119,6 +121,7 @@ export function rideViews(rows: RideRow[]): RideView[] {
       receiver: r.receiver,
       cancelReason: r.cancelReason,
       driver: r.runId ? (drivers.get(r.runId) ?? null) : null,
+      pending: pending.get(r.id) ?? null,
     };
   });
 }

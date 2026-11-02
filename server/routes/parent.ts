@@ -16,6 +16,7 @@ import { createRequest, listRequests } from '../modules/requests';
 import { geocode } from '../modules/geo';
 import { placeInput, addFamilyPlace } from '../modules/places';
 import { quote } from '../../shared/pricing';
+import { createChange, listChanges, withdrawChange, ABSENCE_REASONS } from '../modules/changes';
 
 const dateSchema = dateField;
 
@@ -110,13 +111,38 @@ export async function parentRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // Отмена и перенос — только просьба: применит диспетчер, когда проверит, что могут водители.
   app.post('/parent/rides/:id/cancel', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
     const { reason } = z.object({ reason: z.string().max(200).optional() }).parse(req.body ?? {});
     const { user, ride } = ownRide(req, id);
-    await recordRideEvents({ rideIds: [id], type: 'cancelled', source: 'parent', actorUserId: user.id, reason: reason ?? 'Отменил родитель' });
-    planDay(ride.date); // пересобрать рейс, если он ещё не начат
-    return { ok: true };
+    return createChange(ride.familyId, user.id, { kind: 'cancel', rideId: id, reason });
+  });
+
+  app.post('/parent/rides/:id/time', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { time, reason } = z.object({ time: timeField, reason: z.string().max(200).optional() }).parse(req.body);
+    const { user, ride } = ownRide(req, id);
+    return createChange(ride.familyId, user.id, { kind: 'time', rideId: id, time, reason });
+  });
+
+  app.post('/parent/absence', async (req) => {
+    const b = z.object({ childId: z.string(), dateFrom: dateField, dateTo: dateField, reason: z.enum(ABSENCE_REASONS as [string, ...string[]]) }).parse(req.body);
+    const { user, familyIds } = parentFamilies(req);
+    const kid = db.select().from(schema.children).where(eq(schema.children.id, b.childId)).get();
+    if (!kid || !familyIds.includes(kid.familyId)) throw new HttpError(403, 'Это не ваш ребёнок');
+    requireEditor(user.id, kid.familyId);
+    return createChange(kid.familyId, user.id, { kind: 'absence', ...b });
+  });
+
+  app.get('/parent/changes', async (req) => listChanges(parentFamilies(req).familyIds));
+
+  app.delete('/parent/changes/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { user, familyIds } = parentFamilies(req);
+    const c = listChanges(familyIds).find((x) => x.id === id);
+    if (c) requireEditor(user.id, c.familyId);
+    return withdrawChange(id, familyIds);
   });
 
   /** «Всё в силе» — подтвердить все поездки семьи на день одной кнопкой. */

@@ -429,3 +429,36 @@ export const chatReads = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.thread] })],
 );
+
+/**
+ * Просьбы родителей изменить уже запланированное: отменить поездку, перенести время, «ребёнка не будет».
+ * Ничего не меняется, пока диспетчер не примет: только он знает, что могут водители.
+ */
+export const changeRequests = sqliteTable(
+  'change_requests',
+  {
+    id: text('id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    requestedBy: text('requested_by')
+      .notNull()
+      .references(() => users.id),
+    kind: text('kind').$type<'cancel' | 'time' | 'absence'>().notNull(),
+    childId: text('child_id')
+      .notNull()
+      .references(() => children.id, { onDelete: 'cascade' }),
+    /** для отмены и переноса — какая поездка */
+    rideId: text('ride_id').references(() => rides.id, { onDelete: 'cascade' }),
+    dateFrom: text('date_from').notNull(),
+    dateTo: text('date_to').notNull(),
+    /** для переноса — новое время забора; после «принять с правкой» — время, которое назначил диспетчер */
+    time: text('time'),
+    reason: text('reason'),
+    status: text('status').$type<'new' | 'accepted' | 'declined' | 'withdrawn'>().notNull().default('new'),
+    answer: text('answer'),
+    decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('changes_family').on(t.familyId), index('changes_status').on(t.status)],
+);

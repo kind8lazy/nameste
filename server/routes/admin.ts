@@ -13,6 +13,7 @@ import { geocode } from '../modules/geo';
 import { placeInput, addFamilyPlace, requireFamilyPlace, requireFamilyChild, requireFamily, requireNoDuplicateTemplate } from '../modules/places';
 import { hasSubscription, recentNotifications } from '../modules/notify';
 import { listRequests, acceptRequest, declineRequest } from '../modules/requests';
+import { listChanges, acceptChange, declineChange } from '../modules/changes';
 import { sendSms } from '../modules/sms';
 import { sendMail } from '../modules/mail';
 import { parseRule, describeRule } from '../../shared/recurrence';
@@ -303,6 +304,19 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   app.get('/admin/requests', async () => listRequests());
+
+  // Просьбы родителей изменить план: отменить, перенести, «ребёнка не будет»
+  app.get('/admin/changes', async () => listChanges());
+  app.post('/admin/changes/:id/accept', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { time } = z.object({ time: timeField.optional() }).parse(req.body ?? {});
+    return acceptChange(id, req.user!.id, time);
+  });
+  app.post('/admin/changes/:id/decline', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { answer } = z.object({ answer: z.string().trim().min(3, 'Напишите родителю причину').max(300) }).parse(req.body);
+    return declineChange(id, answer);
+  });
   app.post('/admin/requests/:id/accept', async (req) => acceptRequest(z.object({ id: z.string() }).parse(req.params).id));
   app.post('/admin/requests/:id/decline', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
