@@ -338,3 +338,15 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
 .tile.accent { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); }
 .tile.accent .tile-text small { color: var(--gold-ink); font-weight: 500; }
 .theme-driver .tile.accent .tile-text small { color: var(--gold); }
+
+/* ——— первый экран до входа ——— */
+.welcome { display: grid; gap: 14px; align-content: start; }
+.welcome-hero { padding: 22px; }
+.welcome-login { padding: 16px; display: grid; gap: 10px; }
+.welcome-features { display: grid; gap: 4px; padding: 4px 2px; }
+.welcome-feature { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; }
+.welcome-feature > span:last-child { display: grid; gap: 2px; }
+.welcome-feature b { font-family: var(--f-display); font-size: 16px; }
+.welcome-feature small { color: var(--mute); font-size: 14px; line-height: 1.35; }
+.welcome-install { padding: 16px; display: grid; gap: 8px; }
+.welcome-install ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; }

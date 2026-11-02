@@ -5,6 +5,7 @@ import { homeFor, useAuth } from '../lib/auth';
 import type { Me } from '@shared/api';
 import { YandexCodeLogin } from '../components/YandexCodeLogin';
 import { isIOS, isStandalone } from '../lib/platform';
+import { IconCalendar, IconCar, IconChat } from '../components/Tiles';
 
 /** Текст ошибки выбирает приложение по коду — на странице входа нельзя показать произвольную «инструкцию». */
 const LOGIN_ERRORS: Record<string, string> = {
@@ -32,6 +33,7 @@ export function Login() {
   const [demo, setDemo] = useState(false);
   const demoTarget = useRef<string | null>(null);
   const [yandex, setYandex] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
   useEffect(() => {
     api.get<{ enabled: boolean }>('/auth/yandex').then((d) => setYandex(d.enabled)).catch(() => {});
   }, []);
@@ -66,31 +68,54 @@ export function Login() {
     }
   };
 
+  const standalone = isStandalone();
+  // кодом входят те, у кого нет Яндекса или кто открыл ссылку-приглашение; остальным форма не мешает
+  const showCode = codeOpen || !yandex || !!params.get('code');
+
   return (
     <div className="app">
-      <div className="page" style={{ justifyContent: 'center', paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
-        <div className="live" style={{ padding: 22 }}>
+      <div className="page welcome" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
+        <section className="live welcome-hero">
           <div className="wordmark" style={{ padding: 0 }}>
             НА<i />МЕСТЕ
           </div>
-          <div className="live-big">Развозка детей</div>
-          <div className="live-line">Где сейчас ребёнок — видно в реальном времени.</div>
-        </div>
-        {yandex && (
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 10 }}>
-            <b>Вход через Яндекс ID</b>
-            {/* в приложении с экрана «Домой» на iPhone возврат из Яндекса не попадает обратно — там только вход по коду */}
-            {!(isIOS() && isStandalone()) && (
-              <a className="btn block" style={{ background: '#fc3f1d', color: '#fff' }} href={`/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`}>
-                Войти через Яндекс
-              </a>
-            )}
-            <YandexCodeLogin
-              label={isIOS() && isStandalone() ? 'Войти через Яндекс' : 'Не получается? Войти по коду'}
-              onDone={(m) => setMe(m)}
-            />
-          </div>
-        )}
+          <div className="live-big">Развозка детей без звонков и переписок</div>
+          <div className="live-line">Водитель отмечает каждый шаг — вы сразу знаете: выехал, ребёнок в машине, передан.</div>
+        </section>
+
+        <section className="card welcome-login">
+          {yandex && !(isIOS() && standalone) && (
+            <a className="btn block" style={{ background: '#fc3f1d', color: '#fff' }} href={`/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`}>
+              Войти через Яндекс
+            </a>
+          )}
+          {yandex && <YandexCodeLogin label={isIOS() && standalone ? 'Войти через Яндекс' : 'Не получается? Войти по коду Яндекса'} onDone={(m) => setMe(m)} />}
+          {showCode ? (
+            <form style={{ display: 'grid', gap: 10 }} onSubmit={submit}>
+              <div className="field">
+                <label htmlFor="code">Код из приглашения диспетчера</label>
+                <input
+                  id="code"
+                  className="input code-input"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="00000000"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                />
+              </div>
+              <button className="btn block" disabled={busy || code.length < 6}>
+                {busy ? 'Проверяю…' : 'Войти'}
+              </button>
+            </form>
+          ) : (
+            <button type="button" className="btn secondary block" onClick={() => setCodeOpen(true)}>
+              У меня есть код приглашения
+            </button>
+          )}
+          {error && <div className="note error">{error}</div>}
+        </section>
+
         {demo && (
           <div className="card" style={{ padding: 16, display: 'grid', gap: 10 }}>
             <b>Демо-режим</b>
@@ -101,28 +126,45 @@ export function Login() {
             <button className="btn secondary block" onClick={() => demoLogin('driver', '/admin')}>Диспетчер (компьютер)</button>
           </div>
         )}
-        <form className="card" style={{ padding: 16, display: 'grid', gap: 12 }} onSubmit={submit}>
-          <div className="field">
-            <label htmlFor="code">Или код из приглашения диспетчера</label>
-            <input
-              id="code"
-              className="input code-input"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="00000000"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            />
-          </div>
-          {error && <div className="note error">{error}</div>}
-          <button className="btn block" disabled={busy || code.length < 6}>
-            {busy ? 'Проверяю…' : 'Войти'}
-          </button>
-          <p className="page-sub" style={{ margin: 0 }}>
-            Код присылает диспетчер НА МЕСТЕ. На iPhone сначала добавьте приложение на экран «Домой», потом войдите в нём — тем же кодом.
-          </p>
-        </form>
+
+        <section className="welcome-features" aria-label="Что умеет приложение">
+          <Feature icon={<IconCar />} title="Каждый шаг поездки" text="Уведомления: водитель выехал, на месте, ребёнок в машине, передан взрослому." />
+          <Feature icon={<IconCalendar />} title="Неделя наперёд" text="Все поездки детей на одном экране. Изменить время или отменить — в пару нажатий." />
+          <Feature icon={<IconChat />} title="Диспетчер на связи" text="Чат вместо звонков. Диспетчер подтверждает изменения — он знает, где свободны водители." />
+        </section>
+
+        {!standalone && (
+          <section className="card welcome-install">
+            <b>Установите на телефон — как обычное приложение</b>
+            {isIOS() ? (
+              <ol>
+                <li>Откройте эту страницу в Safari.</li>
+                <li>Нажмите «Поделиться» (квадрат со стрелкой) внизу экрана.</li>
+                <li>Выберите «На экран “Домой”» и войдите в появившемся приложении — тем же способом.</li>
+              </ol>
+            ) : (
+              <ol>
+                <li>Откройте эту страницу в Chrome.</li>
+                <li>Нажмите ⋮ в правом верхнем углу.</li>
+                <li>Выберите «Установить приложение» или «Добавить на главный экран».</li>
+              </ol>
+            )}
+            <span className="page-sub">Без магазина приложений. Уведомления придут, как от любого приложения.</span>
+          </section>
+        )}
       </div>
+    </div>
+  );
+}
+
+function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+  return (
+    <div className="welcome-feature">
+      <span className="tile-icon">{icon}</span>
+      <span>
+        <b>{title}</b>
+        <small>{text}</small>
+      </span>
     </div>
   );
 }
