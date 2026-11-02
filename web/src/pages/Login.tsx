@@ -5,7 +5,7 @@ import { homeFor, useAuth } from '../lib/auth';
 import type { Me } from '@shared/api';
 import { YandexCodeLogin } from '../components/YandexCodeLogin';
 import { isIOS, isStandalone } from '../lib/platform';
-import { IconCalendar, IconCar, IconChat } from '../components/Tiles';
+import { IconCalendar, IconCar, IconChat, IconPause } from '../components/Tiles';
 
 /** Текст ошибки выбирает приложение по коду — на странице входа нельзя показать произвольную «инструкцию». */
 const LOGIN_ERRORS: Record<string, string> = {
@@ -71,53 +71,72 @@ export function Login() {
   const standalone = isStandalone();
   // кодом входят те, у кого нет Яндекса или кто открыл ссылку-приглашение; остальным форма не мешает
   const showCode = codeOpen || !yandex || !!params.get('code');
+  const yandexHref = `/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`;
 
   return (
-    <div className="app">
-      <div className="page welcome" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
-        <section className="live welcome-hero">
-          <div className="wordmark" style={{ padding: 0 }}>
-            НА<i />МЕСТЕ
-          </div>
-          <div className="live-big">Развозка детей без звонков и переписок</div>
-          <div className="live-line">Водитель отмечает каждый шаг — вы сразу знаете: выехал, ребёнок в машине, передан.</div>
-        </section>
+    <div className="welcome">
+      <header className="welcome-top">
+        <div className="wordmark" style={{ padding: 0, color: 'var(--navy)' }}>
+          НА<i />МЕСТЕ
+        </div>
+        <nav>
+          <a href="#how">Как это работает</a>
+          <a href="#install">Установка</a>
+        </nav>
+      </header>
 
-        <section className="card welcome-login">
-          {yandex && !(isIOS() && standalone) && (
-            <a className="btn block" style={{ background: '#fc3f1d', color: '#fff' }} href={`/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`}>
-              Войти через Яндекс
-            </a>
-          )}
-          {yandex && <YandexCodeLogin label={isIOS() && standalone ? 'Войти через Яндекс' : 'Не получается? Войти по коду Яндекса'} onDone={(m) => setMe(m)} />}
-          {showCode ? (
-            <form style={{ display: 'grid', gap: 10 }} onSubmit={submit}>
-              <div className="field">
+      <section className="welcome-hero">
+        <div className="welcome-copy">
+          <span className="welcome-badge">
+            <i />
+            Развозка детей · Санкт-Петербург
+          </span>
+          <h1>
+            Ребёнок едет — <em>вы спокойны</em>
+          </h1>
+          <p>Водитель отмечает каждый шаг поездки, а вы сразу получаете уведомление: выехал, на месте, в машине, передан. Без звонков и переписок.</p>
+
+          <div className="welcome-login">
+            {yandex && !(isIOS() && standalone) && (
+              <a className="welcome-btn primary" href={yandexHref}>
+                Войти через Яндекс <span aria-hidden>→</span>
+              </a>
+            )}
+            {showCode ? (
+              <form className="welcome-code" onSubmit={submit}>
                 <label htmlFor="code">Код из приглашения диспетчера</label>
-                <input
-                  id="code"
-                  className="input code-input"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="00000000"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                />
-              </div>
-              <button className="btn block" disabled={busy || code.length < 6}>
-                {busy ? 'Проверяю…' : 'Войти'}
+                <div>
+                  <input
+                    id="code"
+                    className="input code-input"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="00000000"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  />
+                  <button className="welcome-btn primary" disabled={busy || code.length < 6}>
+                    {busy ? 'Проверяю…' : 'Войти'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="welcome-btn ghost" onClick={() => setCodeOpen(true)}>
+                У меня есть код приглашения
               </button>
-            </form>
-          ) : (
-            <button type="button" className="btn secondary block" onClick={() => setCodeOpen(true)}>
-              У меня есть код приглашения
-            </button>
-          )}
-          {error && <div className="note error">{error}</div>}
-        </section>
+            )}
+            {yandex && <YandexCodeLogin label={isIOS() && standalone ? 'Войти через Яндекс' : 'Не получается? Войти по коду Яндекса'} onDone={(m) => setMe(m)} />}
+            {error && <div className="note error">{error}</div>}
+          </div>
+          <small className="welcome-note">Код приглашения присылает диспетчер. Работает в браузере, можно добавить на экран телефона.</small>
+        </div>
 
-        {demo && (
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 10 }}>
+        <PhoneScene />
+      </section>
+
+      {demo && (
+        <section className="welcome-section">
+          <div className="card" style={{ padding: 16, display: 'grid', gap: 10, maxWidth: 560 }}>
             <b>Демо-режим</b>
             <span className="page-sub">Войдите за любую роль без кода. Данные выдуманные: семья Маши и Лёвы.</span>
             <button className="btn block" onClick={() => demoLogin('parent', '/app')}>Родитель (мама)</button>
@@ -125,45 +144,143 @@ export function Login() {
             <button className="btn gold block" onClick={() => demoLogin('driver', '/driver')}>Водитель</button>
             <button className="btn secondary block" onClick={() => demoLogin('driver', '/admin')}>Диспетчер (компьютер)</button>
           </div>
-        )}
-
-        <section className="welcome-features" aria-label="Что умеет приложение">
-          <Feature icon={<IconCar />} title="Каждый шаг поездки" text="Уведомления: водитель выехал, на месте, ребёнок в машине, передан взрослому." />
-          <Feature icon={<IconCalendar />} title="Неделя наперёд" text="Все поездки детей на одном экране. Изменить время или отменить — в пару нажатий." />
-          <Feature icon={<IconChat />} title="Диспетчер на связи" text="Чат вместо звонков. Диспетчер подтверждает изменения — он знает, где свободны водители." />
         </section>
+      )}
 
-        {!standalone && (
-          <section className="card welcome-install">
-            <b>Установите на телефон — как обычное приложение</b>
-            {isIOS() ? (
-              <ol>
-                <li>Откройте эту страницу в Safari.</li>
-                <li>Нажмите «Поделиться» (квадрат со стрелкой) внизу экрана.</li>
-                <li>Выберите «На экран “Домой”» и войдите в появившемся приложении — тем же способом.</li>
-              </ol>
-            ) : (
-              <ol>
-                <li>Откройте эту страницу в Chrome.</li>
-                <li>Нажмите ⋮ в правом верхнем углу.</li>
-                <li>Выберите «Установить приложение» или «Добавить на главный экран».</li>
-              </ol>
-            )}
-            <span className="page-sub">Без магазина приложений. Уведомления придут, как от любого приложения.</span>
-          </section>
-        )}
+      <section className="welcome-section" id="how">
+        <h2>Как это работает</h2>
+        <div className="welcome-cards">
+          <Feature tone="gold" icon={<IconCar />} title="Каждый шаг поездки" text="Уведомления: водитель выехал, на месте, ребёнок в машине, передан взрослому." />
+          <Feature tone="navy" icon={<IconCalendar />} title="Неделя наперёд" text="Все поездки детей на одном экране. Изменить время или отменить — в пару нажатий." />
+          <Feature tone="green" icon={<IconChat />} title="Диспетчер на связи" text="Чат вместо звонков. Диспетчер подтверждает изменения — он знает, где свободны водители." />
+        </div>
+      </section>
+
+      {!standalone && (
+        <section className="welcome-section" id="install">
+          <h2>Установите на телефон</h2>
+          <p className="welcome-lead">Без магазина приложений. Уведомления придут, как от любого приложения.</p>
+          <div className="welcome-install">
+            <InstallCard
+              title="iPhone"
+              browser="в Safari"
+              steps={['Откройте эту страницу в Safari.', 'Нажмите «Поделиться» — квадрат со стрелкой внизу.', 'Выберите «На экран “Домой”».', 'Откройте приложение с экрана и войдите тем же способом.']}
+            />
+            <InstallCard
+              title="Android"
+              browser="в Chrome"
+              steps={['Откройте эту страницу в Chrome.', 'Нажмите ⋮ в правом верхнем углу.', 'Выберите «Установить приложение».', 'Откройте приложение с экрана и войдите.']}
+            />
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function Feature({ icon, title, text, tone }: { icon: React.ReactNode; title: string; text: string; tone: 'gold' | 'navy' | 'green' }) {
+  return (
+    <div className="welcome-card">
+      <span className={`welcome-card-icon tone-${tone}`}>{icon}</span>
+      <b>{title}</b>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+function InstallCard({ title, browser, steps }: { title: string; browser: string; steps: string[] }) {
+  return (
+    <div className="welcome-card">
+      <b>
+        {title} <small>{browser}</small>
+      </b>
+      <ol className="welcome-steps">
+        {steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Два телефона внахлёст с живой вёрсткой наших экранов: спереди — главная родителя, сзади — смена водителя. */
+function PhoneScene() {
+  return (
+    <div className="phone-scene" aria-hidden>
+      <div className="phone back">
+        <div className="phone-screen dark">
+          <StatusBar dark />
+          <div className="mock-pad">
+            <div className="mock-title light">Смена</div>
+            <div className="mock-days">
+              {['пн', 'вт', 'ср', 'чт', 'пт'].map((d, i) => (
+                <span key={d} className={i === 1 ? 'on' : ''}>
+                  <small>{d}</small>
+                  {3 + i}
+                </span>
+              ))}
+            </div>
+            <div className="mock-stop now">
+              <b>08:00 · Забрать</b>
+              <small>Дом → Школа · Дарья</small>
+              <span className="mock-swipe">Посадил Дарью →</span>
+            </div>
+            <div className="mock-stop">
+              <b>08:18 · Высадить</b>
+              <small>Школа, вход со двора</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="phone front">
+        <div className="phone-screen">
+          <StatusBar />
+          <div className="mock-pad">
+            <div className="mock-title">Маша, Лёва</div>
+            <small className="mock-sub">вторник, 3 ноября</small>
+            <MockTile title="Сегодня" sub="Маша в машине · будет в 14:33" accent icon={<IconCar />} />
+            <MockTile title="Неделя" sub="12 поездок · дальше чт в 14:20" icon={<IconCalendar />} />
+            <MockTile title="Ребёнка не будет" sub="Диспетчер отменит поездки" icon={<IconPause />} />
+            <MockTile title="Чат с диспетчером" sub="Вопросы и пожелания" icon={<IconChat />} />
+          </div>
+          <div className="mock-tabbar">
+            <span className="on">Главная</span>
+            <span>Неделя</span>
+            <span>Чат</span>
+            <span>Семья</span>
+          </div>
+        </div>
+      </div>
+      <div className="phone-toast">
+        <span className="tile-icon">
+          <IconCar />
+        </span>
+        <span>
+          <b>Маша в машине</b>
+          <small>14:23 · водитель Надежда</small>
+        </span>
       </div>
     </div>
   );
 }
 
-function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function StatusBar({ dark }: { dark?: boolean }) {
   return (
-    <div className="welcome-feature">
+    <div className={`phone-status${dark ? ' dark' : ''}`}>
+      <span>9:41</span>
+      <i className="phone-island" />
+      <span className="phone-icons">●●● ▮</span>
+    </div>
+  );
+}
+
+function MockTile({ title, sub, icon, accent }: { title: string; sub: string; icon: React.ReactNode; accent?: boolean }) {
+  return (
+    <div className={`mock-tile${accent ? ' accent' : ''}`}>
       <span className="tile-icon">{icon}</span>
       <span>
         <b>{title}</b>
-        <small>{text}</small>
+        <small>{sub}</small>
       </span>
     </div>
   );

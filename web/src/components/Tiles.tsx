@@ -1,22 +1,8 @@
 // Плитки главных экранов (как у LeStart): раздел, живая подпись, переход. Общие для всех ролей.
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
-export function Tile({
-  title,
-  sub,
-  icon,
-  to,
-  onClick,
-  accent,
-}: {
-  title: string;
-  sub: string;
-  icon: ReactNode;
-  to?: string;
-  onClick?: () => void;
-  accent?: boolean;
-}) {
+export function Tile({ title, sub, icon, to, onClick, accent }: { title: string; sub: string; icon: ReactNode; to?: string; onClick?: () => void; accent?: boolean }) {
   const body = (
     <>
       <span className="tile-icon">{icon}</span>
@@ -29,7 +15,7 @@ export function Tile({
       </span>
     </>
   );
-  const cls = `tile${accent ? " accent" : ""}`;
+  const cls = `tile${accent ? ' accent' : ''}`;
   return to ? (
     <Link to={to} className={cls}>
       {body}
@@ -42,17 +28,7 @@ export function Tile({
 }
 
 const svg = (d: ReactNode) => (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     {d}
   </svg>
 );
@@ -93,10 +69,7 @@ export const IconClock = () =>
       <path d="M12 7.5V12l3 2" />
     </>,
   );
-export const IconChat = () =>
-  svg(
-    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16h0A2.5 2.5 0 0 1 4 13.5z" />,
-  );
+export const IconChat = () => svg(<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16h0A2.5 2.5 0 0 1 4 13.5z" />);
 export const IconRoute = () =>
   svg(
     <>
