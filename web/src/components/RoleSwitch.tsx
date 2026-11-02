@@ -2,7 +2,7 @@
 // и можно перейти в другую роль. У каждой роли свой цвет — плашка и рамка экрана красятся в него.
 import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
+import { useAuth, dispatcherHome } from '../lib/auth';
 
 type RoleKey = 'dispatcher' | 'driver' | 'parent';
 
@@ -13,9 +13,11 @@ const SECTIONS: [RegExp, RoleKey, string][] = [
   [/^\/admin\/clients\/[^/]+/, 'dispatcher', 'Карточка семьи'],
   [/^\/admin\/clients/, 'dispatcher', 'Клиенты'],
   [/^\/admin\/chat/, 'dispatcher', 'Сообщения'],
+  [/^\/admin\/m$/, 'dispatcher', 'Главная'],
   [/^\/admin/, 'dispatcher', 'Диспетчерская'],
   [/^\/driver\/chat/, 'driver', 'Сообщения'],
-  [/^\/driver/, 'driver', 'Смена'],
+  [/^\/driver\/shift/, 'driver', 'Смена'],
+  [/^\/driver/, 'driver', 'Главная'],
   [/^\/app\/week/, 'parent', 'Неделя'],
   [/^\/app\/family/, 'parent', 'Семья'],
   [/^\/app\/new/, 'parent', 'Новая поездка'],
@@ -52,7 +54,7 @@ export function RoleBar() {
         <span className="role-bar-section">· {where.section}</span>
       </div>
       <nav className="role-bar-tabs" aria-label="Сменить роль">
-        <NavLink to="/admin" className={where.role === 'dispatcher' ? 'on' : ''}>
+        <NavLink to={dispatcherHome()} className={where.role === 'dispatcher' ? 'on' : ''}>
           Диспетчер
         </NavLink>
         {me!.roles.includes('driver') && (

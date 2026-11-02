@@ -20,6 +20,8 @@ import { Week } from './pages/parent/Week';
 import { Family } from './pages/parent/Family';
 import { NewRide } from './pages/parent/NewRide';
 import { Shift } from './pages/driver/Shift';
+import { DriverHome } from './pages/driver/Home';
+import { DispatcherHome } from './pages/admin/Home';
 import { Board } from './pages/admin/Board';
 import { Clients } from './pages/admin/Clients';
 import { FamilyCard } from './pages/admin/FamilyCard';
@@ -64,6 +66,14 @@ createRoot(document.getElementById('root')!).render(
             path="/driver"
             element={
               <RequireRole roles={['driver']}>
+                <DriverHome />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/driver/shift"
+            element={
+              <RequireRole roles={['driver']}>
                 <Shift />
               </RequireRole>
             }
@@ -73,6 +83,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireRole roles={['dispatcher']}>
                 <Board />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/m"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <DispatcherHome />
               </RequireRole>
             }
           />

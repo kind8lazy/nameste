@@ -88,7 +88,7 @@ export function Board() {
         <a href="#requests">Заявки</a>
         <a href="#families">Семьи и коды входа</a>
         <a href="#log">Уведомления</a>
-        <a href="/driver">Моя смена (водитель)</a>
+        <a href="/driver/shift">Моя смена (водитель)</a>
         <a
           href="#"
           onClick={async (e) => {

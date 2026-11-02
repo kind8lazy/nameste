@@ -337,3 +337,4 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
 .tile-chevron { color: var(--mute); font-size: 22px; flex: none; }
 .tile.accent { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); }
 .tile.accent .tile-text small { color: var(--gold-ink); font-weight: 500; }
+.theme-driver .tile.accent .tile-text small { color: var(--gold); }

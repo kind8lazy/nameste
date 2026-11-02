@@ -37,7 +37,7 @@ export const useAuth = () => useContext(Ctx);
 export function homeFor(me: Me): string {
   if (me.roles.includes('parent') && me.families.length) return '/app';
   if (me.roles.includes('driver') && !me.roles.includes('dispatcher')) return '/driver';
-  if (me.roles.includes('dispatcher')) return window.matchMedia('(min-width: 900px)').matches ? '/admin' : '/driver';
+  if (me.roles.includes('dispatcher')) return dispatcherHome();
   return '/app';
 }
 
@@ -48,4 +48,9 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
   if (!me) return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname)}`} replace />;
   if (!roles.some((r) => me.roles.includes(r))) return <Navigate to={homeFor(me)} replace />;
   return <>{children}</>;
+}
+
+/** Диспетчерская: на компьютере — большая доска, на телефоне — главная с плитками. */
+export function dispatcherHome(): string {
+  return window.matchMedia('(min-width: 900px)').matches ? '/admin' : '/admin/m';
 }

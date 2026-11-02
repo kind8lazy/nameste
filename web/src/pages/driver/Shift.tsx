@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { phoneHref, routeHref } from '../../lib/platform';
-import { useAuth } from '../../lib/auth';
+import { useAuth, dispatcherHome } from '../../lib/auth';
 import { Avatar, SwipeButton, Tag, useToast } from '../../components/ui';
 import { PushCard } from '../../components/PushCard';
 import { Link } from 'react-router-dom';
@@ -21,7 +21,7 @@ export function Shift() {
   const toast = useToast();
   const { me, setMe } = useAuth();
   const today = localDate();
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(() => new URLSearchParams(window.location.search).get('date') ?? today);
   const isToday = date === today;
 
   const load = useCallback(async () => {
@@ -69,7 +69,7 @@ export function Shift() {
         </div>
         <div className="btn-row">
           {me?.roles.includes('dispatcher') && (
-            <Link to="/admin" className="btn small secondary">
+            <Link to={dispatcherHome()} className="btn small secondary">
               ‹ Диспетчерская
             </Link>
           )}
