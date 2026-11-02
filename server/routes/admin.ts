@@ -14,6 +14,7 @@ import { placeInput, addFamilyPlace, requireFamilyPlace, requireFamilyChild, req
 import { hasSubscription, recentNotifications } from '../modules/notify';
 import { listRequests, acceptRequest, declineRequest } from '../modules/requests';
 import { listChanges, acceptChange, declineChange } from '../modules/changes';
+import { getRide, recordRideEvents } from '../modules/rides';
 import { sendSms } from '../modules/sms';
 import { sendMail } from '../modules/mail';
 import { parseRule, describeRule } from '../../shared/recurrence';
@@ -78,8 +79,9 @@ export async function adminRoutes(app: FastifyInstance) {
         .filter((x) => x.m.familyId === f.id)
         .map((x) => ({ userId: x.u.id, name: x.u.name, phone: x.u.phone, email: x.u.email, yandex: !!x.u.yandexId, relation: x.m.relation, isOwner: x.m.isOwner, notify: x.m.notify, push: hasSubscription(x.u.id) })),
       children: kids.filter((k) => k.familyId === f.id),
+      // остановленные поездки в списке не показываем — иначе кажется, что «Остановить» не сработала
       templates: templates
-        .filter((t) => t.familyId === f.id)
+        .filter((t) => t.familyId === f.id && t.active)
         .map((t) => ({ ...t, ruleText: describeRule(parseRule(t.rule)) })),
     }));
   });
@@ -304,6 +306,22 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   app.get('/admin/requests', async () => listRequests());
+
+  /** Отменить одну поездку на день, не трогая расписание. */
+  app.post('/admin/rides/:id/cancel', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { reason } = z.object({ reason: z.string().trim().min(2, 'Укажите причину').max(200) }).parse(req.body);
+    const ride = getRide(id);
+    const res = await recordRideEvents({ rideIds: [id], type: 'cancelled', source: 'dispatcher', actorUserId: req.user!.id, reason });
+    if (res.rejected.length) throw new HttpError(409, 'Эту поездку уже нельзя отменить: ребёнок в машине, передан или поездка уже отменена');
+    // просьба родителя по этой поездке, если была, больше не нужна
+    db.update(schema.changeRequests)
+      .set({ status: 'accepted', decidedAt: new Date(), answer: 'Поездка отменена диспетчером' })
+      .where(and(eq(schema.changeRequests.rideId, id), eq(schema.changeRequests.status, 'new')))
+      .run();
+    planDay(ride.date);
+    return { ok: true };
+  });
 
   // Просьбы родителей изменить план: отменить, перенести, «ребёнка не будет»
   app.get('/admin/changes', async () => listChanges());

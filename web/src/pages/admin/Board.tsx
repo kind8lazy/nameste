@@ -3,13 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { useAuth } from '../../lib/auth';
-import { Avatar, Tag, useToast } from '../../components/ui';
+import { Avatar, Sheet, Tag, useToast } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
 import { Badge, useUnread } from '../../components/Chat';
 import { DemoCard } from '../../components/DemoCard';
 import { RoleSwitch } from '../../components/RoleSwitch';
 import { REQUEST_STATUS, CHANGE_STATUS, type RequestRow, type ChangeRow } from '../parent/Requests';
-import type { AdminDay, Position } from '@shared/api';
+import type { AdminDay, Position, RideView } from '@shared/api';
 import { addDays, localDate } from '@shared/time';
 
 interface FamilyRow {
@@ -40,6 +40,7 @@ export function Board() {
   const [codes, setCodes] = useState<Record<string, string>>({});
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [changes, setChanges] = useState<ChangeRow[]>([]);
+  const [cancelRide, setCancelRide] = useState<RideView | null>(null);
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -193,13 +194,25 @@ export function Board() {
                     </td>
                     <td>
                       <div className="kids">
-                        {s.rides.map((x) => (
-                          <span key={x.id} className="kid-chip" style={{ fontSize: 13, opacity: x.status === 'cancelled' ? 0.5 : 1 }}>
-                            <Avatar child={x.child} size={20} />
-                            {x.child.firstName}
-                            <Tag tone={x.tone}>{x.statusLabel}</Tag>
-                          </span>
-                        ))}
+                        {s.rides.map((x) => {
+                          const chip = (
+                            <>
+                              <Avatar child={x.child} size={20} />
+                              {x.child.firstName}
+                              <Tag tone={x.tone}>{x.statusLabel}</Tag>
+                            </>
+                          );
+                          // отменить можно, пока ребёнок не в машине; нажимаем на ребёнка в точке забора
+                          return s.kind === 'pickup' && CANCELLABLE.includes(x.status) ? (
+                            <button key={x.id} type="button" className="kid-chip" title="Отменить поездку" style={{ fontSize: 13, cursor: 'pointer', font: 'inherit' }} onClick={() => setCancelRide(x)}>
+                              {chip}
+                            </button>
+                          ) : (
+                            <span key={x.id} className="kid-chip" style={{ fontSize: 13, opacity: x.status === 'cancelled' ? 0.5 : 1 }}>
+                              {chip}
+                            </span>
+                          );
+                        })}
                       </div>
                     </td>
                   </tr>
@@ -333,6 +346,7 @@ export function Board() {
           </table>
         </div>
       </aside>
+      <CancelRideSheet ride={cancelRide} onClose={() => setCancelRide(null)} onDone={(m) => { toast.show(m); void load(); }} />
       {toast.node}
     </div>
   );
@@ -405,5 +419,56 @@ function ChangeCard({ c, onDone }: { c: ChangeRow; onDone: (msg: string) => void
         </div>
       )}
     </div>
+  );
+}
+
+const CANCELLABLE = ['planned', 'confirmed', 'driver_en_route', 'driver_arrived'];
+const CANCEL_REASONS = ['Заболел', 'Заберут сами', 'Занятие отменили', 'Нет свободного водителя'];
+
+/** Отмена одной поездки диспетчером: расписание не меняется, семья получает уведомление. */
+function CancelRideSheet({ ride, onClose, onDone }: { ride: RideView | null; onClose: () => void; onDone: (msg: string) => void }) {
+  const [reason, setReason] = useState(CANCEL_REASONS[0]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!ride) return null;
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/admin/rides/${ride.id}/cancel`, { reason });
+      onDone(`Поездка ${ride.child.firstName} отменена, семья получила уведомление`);
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Не получилось');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Sheet open onClose={onClose}>
+      <h3>
+        Отменить поездку {ride.child.firstName}?
+      </h3>
+      <div className="page-sub">
+        {ride.pickupTime} · {ride.from.name} → {ride.to.name}. Только на этот день — расписание не меняется.
+      </div>
+      <div className="field">
+        <label>Причина (увидит семья)</label>
+        <div className="pick">
+          {CANCEL_REASONS.map((x) => (
+            <button key={x} type="button" className={reason === x ? 'on' : ''} onClick={() => setReason(x)}>
+              {x}
+            </button>
+          ))}
+        </div>
+      </div>
+      {error && <div className="note error">{error}</div>}
+      <button className="btn danger block" disabled={busy} onClick={() => void send()}>
+        Отменить поездку
+      </button>
+      <button className="btn secondary block" onClick={onClose}>
+        Не отменять
+      </button>
+    </Sheet>
   );
 }
