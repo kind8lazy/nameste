@@ -15,6 +15,7 @@ import { ShareTracking } from '../../components/ShareTracking';
 import { RideSheet } from './RideSheet';
 import type { ParentDay, Position, RideView } from '@shared/api';
 import { addMinutes, localTime } from '@shared/time';
+import { Clock } from '../../components/Clock';
 
 export function Today() {
   const [day, setDay] = useState<ParentDay | null>(null);
@@ -63,8 +64,8 @@ export function Today() {
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
         <h1 className="page-title">Сегодня</h1>
-        <span className="page-sub">{day.dayLabel}</span>
       </div>
       {day.children.length > 0 && (
         <div className="kids">

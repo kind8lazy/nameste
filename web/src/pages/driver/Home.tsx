@@ -8,6 +8,7 @@ import { Tile, IconCar, IconCalendar, IconChat } from '../../components/Tiles';
 import type { ShiftView } from '@shared/api';
 import { addDays, formatDayRu, localDate, localTime } from '@shared/time';
 import { plural } from '@shared/ru';
+import { Clock } from '../../components/Clock';
 
 const POINTS: [string, string, string] = ['точка', 'точки', 'точек'];
 
@@ -57,8 +58,8 @@ export function DriverHome() {
     <div className="app theme-driver">
       <main className="page">
         <div className="page-head">
+          <Clock />
           <h1 className="page-title">{me?.name}</h1>
-          <span className="page-sub">{today.dayLabel}</span>
         </div>
         {today.run && <div className="page-sub">{[today.run.vehicle, today.run.plate].filter(Boolean).join(' · ')}</div>}
         <nav className="tiles" aria-label="Разделы">

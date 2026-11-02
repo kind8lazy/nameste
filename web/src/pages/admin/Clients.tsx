@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/auth';
 import { localDate, WEEKDAYS_SHORT, weekday } from '@shared/time';
 import { formatRule } from '@shared/recurrence';
 import { formatPhone } from '@shared/phone';
+import { Clock } from '../../components/Clock';
 
 export interface Family {
   id: string;
@@ -79,7 +80,10 @@ export function Clients() {
         <Link to="/admin/chat">Сообщения</Link>
       </nav>
       <main className="desk-main" style={{ maxWidth: 980 }}>
-        <h1 className="page-title">Клиенты</h1>
+        <div className="page-head">
+          <Clock />
+          <h1 className="page-title">Клиенты</h1>
+        </div>
 
         {status && (
           <div className="kpis">

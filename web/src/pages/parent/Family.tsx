@@ -9,6 +9,7 @@ import { PlaceForm, type PlacePayload } from '../../components/PlaceForm';
 import { YandexCodeLogin } from '../../components/YandexCodeLogin';
 import { isIOS, isStandalone } from '../../lib/platform';
 import type { ParentDay } from '@shared/api';
+import { Clock } from '../../components/Clock';
 
 const SEAT = { none: 'без кресла', booster: 'бустер', seat: 'детское кресло' } as const;
 
@@ -50,6 +51,7 @@ export function Family() {
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
         <h1 className="page-title">Семья</h1>
         <span className="page-sub">{me?.families[0]?.name}</span>
       </div>

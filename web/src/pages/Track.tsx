@@ -8,6 +8,7 @@ import { MiniMap } from '../components/MiniMap';
 import { LiveFreshness } from '../components/LiveFreshness';
 import type { ParentDay } from '@shared/api';
 import { addMinutes, localTime } from '@shared/time';
+import { Clock } from '../components/Clock';
 
 export function Track() {
   const { token = '' } = useParams();
@@ -43,6 +44,7 @@ export function Track() {
     <div className="app">
       <main className="page" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
         <div className="page-head">
+          <Clock />
           <div className="wordmark" style={{ padding: 0, color: 'var(--navy)' }}>
             НА<i />МЕСТЕ
           </div>

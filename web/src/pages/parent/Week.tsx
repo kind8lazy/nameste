@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import type { RideView, WeekDay } from '@shared/api';
 import { addDays, formatDateRu, localDate, WEEKDAYS_SHORT, weekStart } from '@shared/time';
 import { plural, TRIPS } from '@shared/ru';
+import { Clock } from '../../components/Clock';
 
 export function Week() {
   const { me } = useAuth();
@@ -48,6 +49,7 @@ export function Week() {
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
         <h1 className="page-title">Неделя</h1>
         <span className="page-sub">
           {formatDateRu(monday)} – {formatDateRu(addDays(monday, 6))}

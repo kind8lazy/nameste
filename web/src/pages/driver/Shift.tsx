@@ -12,6 +12,7 @@ import { plural } from '@shared/ru';
 import { addDays, localDate, weekday, WEEKDAYS_SHORT } from '@shared/time';
 import { Badge, useUnread } from '../../components/Chat';
 import type { ShiftView, StopView } from '@shared/api';
+import { Clock } from '../../components/Clock';
 
 const SEAT = { none: '', booster: 'бустер', seat: 'кресло' } as const;
 
@@ -64,6 +65,7 @@ export function Shift() {
     <div className="app theme-driver">
       <main className="page" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
         <div className="page-head">
+          <Clock />
           <h1 className="page-title">Смена</h1>
           <span className="page-sub">{shift?.dayLabel}</span>
         </div>

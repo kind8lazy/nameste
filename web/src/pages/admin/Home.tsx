@@ -8,8 +8,9 @@ import { useUnread } from '../../components/Chat';
 import { Tile, IconCar, IconChat, IconClock, IconInbox, IconRoute, IconUsers } from '../../components/Tiles';
 import type { ChangeRow, RequestRow } from '../parent/Requests';
 import type { AdminDay } from '@shared/api';
-import { formatDayRu, localDate } from '@shared/time';
+import { localDate } from '@shared/time';
 import { plural } from '@shared/ru';
+import { Clock } from '../../components/Clock';
 
 export function DispatcherHome() {
   const { me } = useAuth();
@@ -47,8 +48,8 @@ export function DispatcherHome() {
     <div className="app">
       <main className="page">
         <div className="page-head">
+          <Clock />
           <h1 className="page-title">Диспетчерская</h1>
-          <span className="page-sub">{formatDayRu(localDate())}</span>
         </div>
         <nav className="tiles" aria-label="Разделы">
           <Tile

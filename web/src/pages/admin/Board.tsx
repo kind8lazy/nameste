@@ -10,6 +10,7 @@ import { DemoCard } from '../../components/DemoCard';
 import { REQUEST_STATUS, CHANGE_STATUS, type RequestRow, type ChangeRow } from '../parent/Requests';
 import type { AdminDay, Position, RideView } from '@shared/api';
 import { addDays, localDate } from '@shared/time';
+import { Clock } from '../../components/Clock';
 
 interface FamilyRow {
   id: string;
@@ -113,6 +114,7 @@ export function Board() {
 
       <main className="desk-main" id="day">
         <div className="page-head">
+          <Clock />
           <h1 className="page-title">{day?.dayLabel ?? '…'}</h1>
           <div className="btn-row" style={{ flex: 'none' }}>
             <button className="btn small secondary" onClick={() => setDate(addDays(date, -1))}>

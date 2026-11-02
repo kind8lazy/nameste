@@ -12,6 +12,7 @@ import { Today } from './Today';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
 import { addDays, formatDayRu, localDate, localTime } from '@shared/time';
 import { plural } from '@shared/ru';
+import { Clock } from '../../components/Clock';
 
 const ACTIVE = ['driver_en_route', 'driver_arrived', 'on_board'];
 
@@ -72,8 +73,8 @@ export function Home() {
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
         <h1 className="page-title">{day.children.map((c) => c.firstName).join(', ') || 'НА МЕСТЕ'}</h1>
-        <span className="page-sub">{formatDayRu(today)}</span>
       </div>
       <nav className="tiles" aria-label="Разделы">
         <Tile to="/app/today" title="Сегодня" sub={todayText} accent={!!live} icon={<IconCar />} />

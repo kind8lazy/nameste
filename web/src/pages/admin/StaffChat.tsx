@@ -2,6 +2,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChatBrowser, Badge, useUnread } from '../../components/Chat';
 import { useAuth } from '../../lib/auth';
+import { Clock } from '../../components/Clock';
 
 /** Диспетчер видит это на компьютере с меню слева, водитель — на телефоне. */
 export function StaffChat() {
@@ -14,6 +15,7 @@ export function StaffChat() {
       <div className="app theme-driver">
         <main className="page">
           <div className="page-head">
+            <Clock />
             <h1 className="page-title">Сообщения</h1>
             <Link to="/driver" className="btn small secondary">
               ‹ Смена
@@ -38,7 +40,10 @@ export function StaffChat() {
         </a>
       </nav>
       <main className="desk-main" style={{ maxWidth: 1100 }}>
-        <h1 className="page-title">Сообщения</h1>
+        <div className="page-head">
+          <Clock />
+          <h1 className="page-title">Сообщения</h1>
+        </div>
         <ChatBrowser initial={params.get('thread')} />
       </main>
     </div>

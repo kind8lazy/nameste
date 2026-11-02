@@ -8,6 +8,7 @@ import type { ParentDay } from '@shared/api';
 import { addDays, localDate, WEEKDAYS_SHORT, weekday } from '@shared/time';
 import { formatRule } from '@shared/recurrence';
 import { plural, TRIPS } from '@shared/ru';
+import { Clock } from '../../components/Clock';
 
 interface Place {
   id: string;
@@ -107,6 +108,7 @@ export function NewRide() {
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
         <h1 className="page-title">Новая поездка</h1>
         <Link to="/app/week" className="page-sub">
           Отмена

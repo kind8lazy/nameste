@@ -6,6 +6,7 @@ import { useToast } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { PlaceForm, type PlacePayload } from '../../components/PlaceForm';
 import { MemberRow, NewTemplate, useDrivers, driverLabel, type Family, type Place, type Run } from './Clients';
+import { Clock } from '../../components/Clock';
 
 interface PlaceRow extends Place {
   familyId: string | null;
@@ -92,6 +93,7 @@ export function FamilyCard() {
       {nav}
       <main className="desk-main" style={{ maxWidth: 980 }}>
         <div className="page-head">
+          <Clock />
           <div style={{ display: 'grid', gap: 4 }}>
             <Link to="/admin/clients" className="page-sub">
               ‹ Клиенты
