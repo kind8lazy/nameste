@@ -127,7 +127,7 @@ export function Access() {
   );
 
   return (
-    <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
+    <div className="desk desk-2">
       <DeskNav />
       <main className="desk-main" style={{ maxWidth: 820 }}>
         <div className="page-head">

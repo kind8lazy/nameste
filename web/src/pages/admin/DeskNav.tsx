@@ -23,6 +23,8 @@ export function DeskNav() {
   const unread = useUnread();
   const inbox = useInboxCount();
   return (
+    <>
+    <DeskTabbar inbox={inbox} unread={unread} />
     <nav className="desk-nav">
       <div className="wordmark">
         НА
@@ -45,6 +47,34 @@ export function DeskNav() {
       <div className="desk-nav-bottom">
         <NavLink to="/admin/settings">Настройки</NavLink>
       </div>
+    </nav>
+    </>
+  );
+}
+
+/** На телефоне боковое меню прячется — вместо него нижнее меню, как у родителя. */
+export function DeskTabbar({ inbox, unread }: { inbox?: number; unread?: number }) {
+  const ownInbox = useInboxCount();
+  const ownUnread = useUnread();
+  const nInbox = inbox ?? ownInbox;
+  const nUnread = unread ?? ownUnread;
+  return (
+    <nav className="tabbar desk-tabbar" style={{ ['--tabs' as string]: 5 }} aria-label="Разделы">
+      <NavLink to="/admin/m" end>
+        Главная
+      </NavLink>
+      <NavLink to="/admin" end>
+        Сегодня
+      </NavLink>
+      <NavLink to="/admin/inbox">
+        Входящие
+        <Badge n={nInbox} />
+      </NavLink>
+      <NavLink to="/admin/clients">Семьи</NavLink>
+      <NavLink to="/admin/chat">
+        Чат
+        <Badge n={nUnread} />
+      </NavLink>
     </nav>
   );
 }

@@ -61,7 +61,7 @@ export function Inbox() {
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 12);
   return (
-    <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
+    <div className="desk desk-2">
       <DeskNav />
       <main className="desk-main" style={{ maxWidth: 760 }}>
         <div className="page-head">

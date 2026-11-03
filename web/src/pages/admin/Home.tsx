@@ -12,6 +12,7 @@ import { localDate } from '@shared/time';
 import { plural } from '@shared/ru';
 import { Clock } from '../../components/Clock';
 import { Skeleton } from '../../components/ui';
+import { DeskTabbar } from './DeskNav';
 
 export function DispatcherHome() {
   const { me } = useAuth();
@@ -76,8 +77,10 @@ export function DispatcherHome() {
           <Tile to="/admin/access" title="Водители и доступ" sub="Сотрудники и коды входа" icon={<IconCar />} />
           <Tile to="/admin/chat" title="Сообщения" sub={unread ? `${unread} ${plural(unread, ['новое', 'новых', 'новых'])}` : 'Семьи и водители'} accent={unread > 0} icon={<IconChat />} />
           {me?.roles.includes('driver') && <Tile to="/driver" title="Моя смена" sub="Вы тоже водитель — ваш рейс и неделя" icon={<IconCar />} />}
+          <Tile to="/admin/settings" title="Настройки" sub="Почта, вход через Яндекс, журнал уведомлений" icon={<IconInbox />} />
         </nav>
       </main>
+      <DeskTabbar />
     </div>
   );
 }

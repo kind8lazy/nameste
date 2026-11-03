@@ -43,7 +43,7 @@ export function Settings() {
   // уведомления о входе — служебные, по умолчанию прячем, чтобы видеть, что получили семьи
   const shown = log.filter((n) => logins || !n.title.startsWith('Новый вход'));
   return (
-    <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
+    <div className="desk desk-2">
       <DeskNav />
       <main className="desk-main" style={{ maxWidth: 820 }}>
         <div className="page-head">

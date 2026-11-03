@@ -255,8 +255,15 @@ input, select, textarea, button { font-size: 16px; }
 .table tr:last-child td { border-bottom: 0; }
 .mono { font-variant-numeric: tabular-nums; }
 
+/* у экранов без правой колонки — две колонки: меню и содержимое */
+.desk.desk-2 { grid-template-columns: 210px minmax(0, 1fr); }
+.desk-tabbar { display: none; }
 @media (max-width: 960px) {
-  .desk { grid-template-columns: minmax(0, 1fr); }
+  .desk, .desk.desk-2 { grid-template-columns: minmax(0, 1fr); }
+  /* телефон: боковое меню прячем, внизу — меню разделов */
+  .desk-nav { display: none !important; }
+  .desk-tabbar { display: grid; }
+  .desk { padding-bottom: calc(var(--safe-bottom) + 76px); min-height: 0; }
   .desk-nav { flex-direction: row; flex-wrap: wrap; }
   .desk-side { border-left: 0; border-top: 1px solid var(--line); }
   .desk-main { padding: 14px; }
@@ -545,3 +552,13 @@ input[type='search'].input { min-height: 48px; }
 .toast.with-action { display: flex; align-items: center; gap: 14px; padding: 6px 6px 6px 16px; width: min(380px, calc(100vw - 32px)); box-sizing: border-box; justify-content: space-between; }
 .toast-action { min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; flex: none; }
 .empty-action { display: grid; gap: 14px; justify-items: center; }
+
+/* плашка роли на узком экране — одна строка: только переключатель, цвет и так говорит, где вы */
+@media (max-width: 480px) {
+  .role-bar { padding: calc(var(--safe-top, 0px) + 6px) 10px 6px; }
+  .role-bar-now { display: none; }
+  .role-bar-tabs a { min-height: 38px; }
+}
+.tabbar a { position: relative; }
+.tabbar a .badge { position: absolute; top: 2px; left: calc(50% + 8px); }
+@media (max-width: 480px) { .hide-phone { display: none !important; } }

@@ -75,7 +75,7 @@ export function FamilyCard() {
   };
 
   const shell = (body: ReactNode) => (
-    <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
+    <div className="desk desk-2">
       <DeskNav />
       <main className="desk-main" style={{ maxWidth: 820 }}>
         {body}
@@ -117,7 +117,7 @@ export function FamilyCard() {
         <h1 className="page-title" style={{ flex: 1 }}>
           {family.name}
         </h1>
-        <Link to={`/admin/chat?thread=${encodeURIComponent(`family:${family.id}`)}`} className="btn small secondary">
+        <Link to={`/admin/chat?thread=${encodeURIComponent(`family:${family.id}`)}`} className="btn small secondary hide-phone">
           Написать
         </Link>
         <MoreButton
@@ -127,6 +127,7 @@ export function FamilyCard() {
               kind: 'menu',
               title: family.name,
               actions: [
+                { label: 'Написать семье', onClick: () => navigate(`/admin/chat?thread=${encodeURIComponent(`family:${family.id}`)}`) },
                 { label: 'Переименовать', onClick: () => setPanel({ kind: 'form', title: 'Название семьи', fields: [{ key: 'name', label: 'Название', value: family.name }], save: (v) => runClose(() => api.patch(`/admin/families/${family.id}`, { name: v.name.trim() }), 'Название изменено') }) },
                 {
                   label: 'Удалить семью',
