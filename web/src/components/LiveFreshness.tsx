@@ -17,7 +17,7 @@ export function LiveFreshness({ at }: { at: number }) {
     );
   }
   return (
-    <div className="page-sub" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+    <div className="page-sub" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
       <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: '#2D7552', display: 'inline-block' }} />
       Машина на связи · обновлено {ago}
     </div>

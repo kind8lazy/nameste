@@ -15,7 +15,7 @@ function slots(time: string): string[] {
   return Array.from({ length: 10 }, (_, i) => addMinutes(time, (i - 3) * 20)).filter((t) => t !== time && t >= '06:00' && t <= '22:00');
 }
 
-export function RideSheet({ rides, onClose, onDone }: { rides: RideView[] | null; onClose: () => void; onDone: (msg: string) => void }) {
+export function RideSheet({ rides, onClose, onDone }: { rides: RideView[] | null; onClose: () => void; onDone: (msg: string, changeId?: string) => void }) {
   const [reason, setReason] = useState<string>(REASONS[0]);
   const [timeFor, setTimeFor] = useState<string | null>(null);
   const [time, setTime] = useState('');
@@ -24,11 +24,14 @@ export function RideSheet({ rides, onClose, onDone }: { rides: RideView[] | null
   if (!rides) return null;
 
   const act = async (fn: () => Promise<unknown>, msg: string) => {
+    let changeId: string | undefined;
     setBusy(true);
     setError(null);
     try {
-      await fn();
-      onDone(msg);
+      const r = (await fn()) as { id?: string; kind?: string } | undefined;
+      // просьбы (отмена, перенос) можно отозвать в первые 10 секунд
+      changeId = r?.kind ? r.id : undefined;
+      onDone(msg, changeId);
       onClose();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не получилось, попробуйте ещё раз');

@@ -119,7 +119,7 @@ export function MyChanges() {
 const ABSENCE_REASONS = ['Болезнь', 'Семейные обстоятельства', 'Отпуск', 'Сборы'];
 
 /** «Ребёнка не будет»: причина и дни подряд. Поездки отменит диспетчер. */
-export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: (msg: string) => void }) {
+export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: (msg: string, changeId?: string) => void }) {
   const [children, setChildren] = useState<ChildView[]>([]);
   const [childId, setChildId] = useState('');
   const [reason, setReason] = useState(ABSENCE_REASONS[0]);
@@ -148,8 +148,8 @@ export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose
     setBusy(true);
     setError(null);
     try {
-      await api.post('/parent/absence', { childId, dateFrom: from, dateTo: end, reason });
-      onDone('Просьба отправлена диспетчеру. Пока он не ответил, поездки остаются в плане.');
+      const r = await api.post<{ id: string }>('/parent/absence', { childId, dateFrom: from, dateTo: end, reason });
+      onDone('Просьба отправлена диспетчеру', r.id);
       setFrom(null);
       setTo(null);
       onClose();
@@ -205,4 +205,25 @@ export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose
       </button>
     </Sheet>
   );
+}
+
+/** Сообщение после просьбы с кнопкой «Отменить» на 10 секунд: просьба отзывается, диспетчер её не увидит. */
+export function undoable(toast: { show: (t: string, a?: { label: string; onClick: () => void }) => void }, reload: () => void) {
+  return (msg: string, changeId?: string) => {
+    toast.show(
+      msg,
+      changeId
+        ? {
+            label: 'Отменить',
+            onClick: () =>
+              void api
+                .del(`/parent/changes/${changeId}`)
+                .then(() => toast.show('Просьба отозвана — диспетчер её не увидит'))
+                .catch((e) => toast.show((e as Error).message))
+                .finally(reload),
+          }
+        : undefined,
+    );
+    reload();
+  };
 }

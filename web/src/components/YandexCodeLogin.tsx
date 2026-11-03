@@ -117,7 +117,7 @@ export function YandexCodeLogin({ onDone, label = 'Войти по коду Ян
   return (
     <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }} aria-live="polite">
       <b>Подтвердите вход в Яндексе</b>
-      <ol style={{ margin: 0, paddingLeft: '1.2em', display: 'grid', gap: 6, fontSize: 15 }}>
+      <ol style={{ margin: 0, paddingLeft: '1.2em', display: 'grid', gap: 6, fontSize: 16 }}>
         <li>Откройте страницу Яндекса по кнопке ниже.</li>
         <li>Войдите в свой Яндекс, если он попросит.</li>
         <li>Введите этот код и разрешите доступ:</li>
@@ -133,7 +133,7 @@ export function YandexCodeLogin({ onDone, label = 'Войти по коду Ян
           {copied ? 'Код скопирован' : 'Скопировать код'}
         </button>
       </div>
-      <div className="note" style={{ fontSize: 13 }}>
+      <div className="note" style={{ fontSize: 14 }}>
         Вводите код, только если он на вашем экране. НА МЕСТЕ никогда не просит прислать или ввести код, который вам продиктовали или прислали.
       </div>
       <span className="page-sub">

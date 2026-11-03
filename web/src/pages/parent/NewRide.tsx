@@ -35,7 +35,8 @@ export function NewRide() {
   const [fromAddr, setFromAddr] = useState('');
   const [to, setTo] = useState('');
   const [toAddr, setToAddr] = useState('');
-  const [date, setDate] = useState(nextWorkday());
+  // «Заказать на этот день» из недели передаёт дату в адресе
+  const [date, setDate] = useState(() => { const d = new URLSearchParams(window.location.search).get('date'); return d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= localDate() ? d : nextWorkday(); });
   const [time, setTime] = useState('14:20');
   const [repeat, setRepeat] = useState<Repeat>('weekly');
   const [days, setDays] = useState<number[]>([weekday(nextWorkday())]);

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 
 process.env.DEMO_MODE = '0';
 const { runMigrations, db, schema } = await import('./db/client');
@@ -60,5 +60,25 @@ describe('просьбы родителя — только с согласия �
     await acceptChange(c.id, 'disp');
     expect(ride('r2').status).toBe('cancelled');
     expect(ride('r3').status).toBe('cancelled');
+  });
+
+  it('диспетчер узнаёт о просьбе через 10 секунд, а отозванную не видит вовсе', async () => {
+    const { UNDO_MS } = await import('./modules/changes');
+    const toDisp = () => db.select().from(schema.notifications).where(eq(schema.notifications.userId, 'disp')).all().filter((n) => n.title.startsWith('Просьба')).length;
+    db.insert(schema.rides).values({ id: 'r4', familyId: 'f', childId: 'k', date: addDays(localDate(), 4), fromPlaceId: 'a', toPlaceId: 'b', pickupTime: '08:00', priceRub: 0 }).run();
+    db.insert(schema.rides).values({ id: 'r5', familyId: 'f', childId: 'k', date: addDays(localDate(), 5), fromPlaceId: 'a', toPlaceId: 'b', pickupTime: '08:00', priceRub: 0 }).run();
+    vi.useFakeTimers();
+    try {
+      const before = toDisp();
+      const kept = createChange('f', 'mom', { kind: 'cancel', rideId: 'r4' });
+      const undone = createChange('f', 'mom', { kind: 'cancel', rideId: 'r5' });
+      withdrawChange(undone.id, ['f']);
+      expect(toDisp()).toBe(before);
+      await vi.advanceTimersByTimeAsync(UNDO_MS + 10);
+      expect(toDisp()).toBe(before + 1);
+      expect(kept.status).toBe('new');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

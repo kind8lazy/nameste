@@ -17,6 +17,8 @@ type Change = typeof schema.changeRequests.$inferSelect;
 const CHANGEABLE: RideStatus[] = ['planned', 'confirmed'];
 /** «Ребёнка не будет» — на две недели вперёд, столько поездок уже есть в расписании. */
 export const ABSENCE_DAYS = 14;
+/** Сколько секунд у родителя, чтобы передумать сразу после отправки. */
+export const UNDO_MS = 10_000;
 export const ABSENCE_REASONS = ['Болезнь', 'Семейные обстоятельства', 'Отпуск', 'Сборы'];
 
 export type ChangeInput =
@@ -61,11 +63,17 @@ export function createChange(familyId: string, userId: string, input: ChangeInpu
     .run();
   const view = changeViews([db.select().from(schema.changeRequests).where(eq(schema.changeRequests.id, id)).get()!])[0];
   const dispatchers = db.select().from(schema.users).all().filter((u) => u.roles.includes('dispatcher'));
-  void notifyUsers(
-    dispatchers.map((d) => d.id),
-    'admin_request',
-    { title: `Просьба: ${view.title}`, body: `${view.familyName} · ${view.summary}`, priority: 'important', url: '/admin#requests' },
-  );
+  // у родителя 10 секунд, чтобы нажать «Отменить», — диспетчера зовём, только если просьба осталась в силе
+  const timer = setTimeout(() => {
+    const still = db.select().from(schema.changeRequests).where(eq(schema.changeRequests.id, id)).get();
+    if (still?.status !== 'new') return;
+    void notifyUsers(
+      dispatchers.map((d) => d.id),
+      'admin_request',
+      { title: `Просьба: ${view.title}`, body: `${view.familyName} · ${view.summary}`, priority: 'important', url: '/admin/inbox' },
+    );
+  }, UNDO_MS);
+  timer.unref?.();
   publish(channel.dispatch, 'rides', { change: id });
   publish(channel.family(familyId), 'rides', { change: id });
   return view;

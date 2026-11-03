@@ -87,17 +87,42 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+/** Всплывающее сообщение внизу. С действием («Отменить») держится 10 секунд, иначе 5,5. */
 export function useToast() {
   const [text, setText] = useState<string | null>(null);
+  const [action, setAction] = useState<ToastAction | null>(null);
   const timer = useRef<number | undefined>(undefined);
-  const show = (t: string) => {
+  const show = (t: string, act?: ToastAction) => {
     setText(t);
+    setAction(act ?? null);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setText(null), 5500);
+    timer.current = window.setTimeout(() => {
+      setText(null);
+      setAction(null);
+    }, act ? 10_000 : 5500);
   };
   const node = text ? (
-    <div className="toast" role="status">
-      {text}
+    <div className={`toast${action ? ' with-action' : ''}`} role="status">
+      <span>{text}</span>
+      {action && (
+        <button
+          type="button"
+          className="toast-action"
+          onClick={() => {
+            window.clearTimeout(timer.current);
+            setText(null);
+            setAction(null);
+            action.onClick();
+          }}
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   ) : null;
   return { show, node };
@@ -170,5 +195,24 @@ export function BackButton({ to, label = 'Назад' }: { to: string; label?: s
         <path d="M15 5l-7 7 7 7" />
       </svg>
     </Link>
+  );
+}
+
+/** Пустое состояние: одна фраза и сразу под ней главное действие (если оно есть). */
+export function EmptyState({ text, action, to, onClick }: { text: string; action?: string; to?: string; onClick?: () => void }) {
+  return (
+    <div className="card empty empty-action">
+      <span>{text}</span>
+      {action && to && (
+        <Link to={to} className="btn">
+          {action}
+        </Link>
+      )}
+      {action && !to && onClick && (
+        <button type="button" className="btn" onClick={onClick}>
+          {action}
+        </button>
+      )}
+    </div>
   );
 }

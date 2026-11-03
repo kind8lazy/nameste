@@ -5,9 +5,9 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { useStream } from '../../lib/stream';
 import { groupTrips, tripState } from '../../lib/trips';
-import { Tag, useToast, Skeleton } from '../../components/ui';
+import { Tag, useToast, Skeleton, EmptyState } from '../../components/ui';
 import { RideSheet } from './RideSheet';
-import { MyRequests, MyChanges, AbsenceSheet } from './Requests';
+import { MyRequests, MyChanges, AbsenceSheet, undoable } from './Requests';
 import { Link } from 'react-router-dom';
 import type { RideView, WeekDay } from '@shared/api';
 import { addDays, formatDateRu, localDate, WEEKDAYS_SHORT, weekStart } from '@shared/time';
@@ -105,7 +105,7 @@ export function Week() {
       {!week ? (
         <Skeleton />
       ) : trips.length === 0 ? (
-        <div className="card empty">В этот день поездок нет</div>
+        <EmptyState text="В этот день поездок нет." action={canOrder && selected >= today ? 'Заказать на этот день' : undefined} to={`/app/new?date=${selected}`} />
       ) : (
         <ul className="list">
           {trips.map((t) => {
@@ -149,8 +149,8 @@ export function Week() {
         </span>
         {!me?.lite && <b className="mono">{total.toLocaleString('ru-RU')} ₽</b>}
       </div>
-      <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={(m) => { toast.show(m); void load(); }} />
-      <AbsenceSheet open={absence} onClose={() => setAbsence(false)} onDone={(m) => { toast.show(m); void load(); }} />
+      <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
+      <AbsenceSheet open={absence} onClose={() => setAbsence(false)} onDone={undoable(toast, () => void load())} />
       {toast.node}
     </main>
   );

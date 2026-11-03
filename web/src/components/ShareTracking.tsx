@@ -37,7 +37,7 @@ export function ShareTracking() {
         Получить ссылку
       </button>
       {url && (
-        <span style={{ userSelect: 'all', wordBreak: 'break-all', fontSize: 13 }}>
+        <span style={{ userSelect: 'all', wordBreak: 'break-all', fontSize: 14 }}>
           {url}
         </span>
       )}

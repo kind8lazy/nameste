@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { useAuth } from '../../lib/auth';
-import { Avatar, Sheet, Tag, useToast } from '../../components/ui';
+import { Avatar, Sheet, Tag, useToast, EmptyState } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
 import { DemoCard } from '../../components/DemoCard';
 import { PendingList, useInbox } from './Inbox';
@@ -136,11 +136,11 @@ export function Board() {
                           );
                           // отменить можно, пока ребёнок не в машине; нажимаем на ребёнка в точке забора
                           return s.kind === 'pickup' && CANCELLABLE.includes(x.status) ? (
-                            <button key={x.id} type="button" className="kid-chip" title="Отменить поездку" style={{ fontSize: 13, cursor: 'pointer', font: 'inherit' }} onClick={() => setCancelRide(x)}>
+                            <button key={x.id} type="button" className="kid-chip" title="Отменить поездку" style={{ fontSize: 14, cursor: 'pointer', font: 'inherit' }} onClick={() => setCancelRide(x)}>
                               {chip}
                             </button>
                           ) : (
-                            <span key={x.id} className="kid-chip" style={{ fontSize: 13, opacity: x.status === 'cancelled' ? 0.5 : 1 }}>
+                            <span key={x.id} className="kid-chip" style={{ fontSize: 14, opacity: x.status === 'cancelled' ? 0.5 : 1 }}>
                               {chip}
                             </span>
                           );
@@ -153,7 +153,7 @@ export function Board() {
             </table>
           </section>
         ))}
-        {day && !day.runs.length && <div className="card empty">На этот день рейса нет</div>}
+        {day && !day.runs.length && <EmptyState text="На этот день поездок нет." action="Добавить поездку семье" to="/admin/clients" />}
         {day && day.unassigned.length > 0 && (
           <div className="note">
             <b>Без машины: {day.unassigned.length}</b>

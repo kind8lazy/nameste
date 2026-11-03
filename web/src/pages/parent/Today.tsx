@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { groupTrips, tripState, currentTarget, type Trip } from '../../lib/trips';
 import { phoneHref } from '../../lib/platform';
-import { Avatar, Steps, Tag, useToast, Skeleton, BackButton } from '../../components/ui';
+import { Avatar, Steps, Tag, useToast, Skeleton, BackButton, EmptyState } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
 import { PushCard } from '../../components/PushCard';
 import { DemoCard } from '../../components/DemoCard';
@@ -16,6 +16,7 @@ import { RideSheet } from './RideSheet';
 import type { ParentDay, Position, RideView } from '@shared/api';
 import { addMinutes, localTime } from '@shared/time';
 import { Clock } from '../../components/Clock';
+import { undoable } from './Requests';
 
 export function Today() {
   const [day, setDay] = useState<ParentDay | null>(null);
@@ -79,7 +80,7 @@ export function Today() {
         </div>
       )}
 
-      {featured ? <TripCard trip={featured} position={position} onOpen={() => setSheet(featured.rides)} /> : !trips.length && <div className="card empty">Сегодня поездок нет. Расписание — во вкладке «Неделя».</div>}
+      {featured ? <TripCard trip={featured} position={position} onOpen={() => setSheet(featured.rides)} /> : !trips.length && <EmptyState text="Сегодня поездок нет." action={canOrder ? 'Заказать поездку' : undefined} to="/app/new" />}
 
       {others.length > 0 && (
         <>
@@ -118,7 +119,7 @@ export function Today() {
           Вся неделя
         </Link>
       </div>
-      <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={(m) => { toast.show(m); void load(); }} />
+      <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       {toast.node}
     </main>
   );

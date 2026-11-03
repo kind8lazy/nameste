@@ -1,7 +1,7 @@
 // Общие детали спокойных экранов диспетчера: блок со списком, кнопка «⋯» и нижняя панель
 // (меню действий, короткая форма или подтверждение с последствиями).
 import { useEffect, useState, type ReactNode } from 'react';
-import { Sheet } from '../../components/ui';
+import { Sheet, EmptyState } from '../../components/ui';
 
 export type Action = { label: string; danger?: boolean; onClick: () => void };
 export type Field = { key: string; label: string; value: string; placeholder?: string; type?: string };
@@ -24,7 +24,7 @@ export function Block({ title, add, onAdd, hint, empty, children }: { title: str
           </button>
         )}
       </div>
-      {children.length ? <ul className="list">{children}</ul> : empty && <div className="card empty">{empty}</div>}
+      {children.length ? <ul className="list">{children}</ul> : empty && <EmptyState text={empty} action={add && onAdd ? `Добавить: ${add.toLowerCase()}` : undefined} onClick={onAdd} />}
       {hint && <small className="page-sub">{hint}</small>}
     </section>
   );

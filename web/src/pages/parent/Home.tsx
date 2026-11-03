@@ -7,7 +7,7 @@ import { useStream } from '../../lib/stream';
 import { useAuth } from '../../lib/auth';
 import { useToast, Skeleton } from '../../components/ui';
 import { useUnread } from '../../components/Chat';
-import { AbsenceSheet, type ChangeRow } from './Requests';
+import { AbsenceSheet, undoable, type ChangeRow } from './Requests';
 import { Today } from './Today';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
 import { addDays, formatDayRu, localDate, localTime } from '@shared/time';
@@ -110,10 +110,7 @@ export function Home() {
       <AbsenceSheet
         open={absence}
         onClose={() => setAbsence(false)}
-        onDone={(m) => {
-          toast.show(m);
-          void load();
-        }}
+        onDone={undoable(toast, () => void load())}
       />
       {toast.node}
     </main>
