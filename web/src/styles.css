@@ -148,9 +148,11 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 .btn.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
 .btn.danger { background: var(--alert-bg); color: var(--alert); }
 .btn.gold { background: var(--gold); color: #241a07; }
-.btn.small { min-height: 36px; padding: 0 12px; font-size: 14px; border-radius: 10px; }
+.btn.small { min-height: 44px; padding: 0 14px; font-size: 14px; border-radius: 12px; }
 .btn.block { width: 100%; }
-.btn:disabled { opacity: 0.5; cursor: default; }
+.btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn { transition: transform 0.12s, background 0.12s; }
 .btn-row { display: flex; gap: 8px; }
 .btn-row > * { flex: 1; }
 
@@ -195,7 +197,7 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 
 /* ——— листы снизу ——— */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(10, 20, 24, 0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
-.sheet { background: var(--card); color: var(--ink); width: 100%; max-width: 560px; border-radius: 22px 22px 0 0; padding: 18px 16px calc(var(--safe-bottom) + 18px); display: grid; gap: 12px; max-height: 88vh; overflow: auto; }
+.sheet { position: relative; background: var(--card); color: var(--ink); width: 100%; max-width: 560px; border-radius: 24px 24px 0 0; padding: 26px 20px calc(var(--safe-bottom) + 20px); transition: transform 0.2s ease-out; display: grid; gap: 12px; max-height: 88vh; overflow: auto; }
 .sheet h3 { font-size: 20px; }
 .field { display: grid; gap: 6px; }
 .field label { font-size: 13px; color: var(--mute); }
@@ -225,7 +227,7 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 .stop .kid-line { display: flex; align-items: center; gap: 10px; }
 .stop .kid-line .grow { flex: 1; display: grid; }
 .pick { display: flex; gap: 6px; flex-wrap: wrap; }
-.pick button { border: 1px solid #cbd5d2; background: transparent; color: inherit; border-radius: 999px; padding: 6px 12px; font-size: 14px; cursor: pointer; }
+.pick button { border: 1px solid #cbd5d2; background: transparent; color: inherit; border-radius: 999px; padding: 6px 14px; min-height: 44px; font-size: 14px; cursor: pointer; }
 .pick button.on { background: #13252d; color: #f4f0e6; border-color: #13252d; }
 .check { width: 26px; height: 26px; border-radius: 8px; border: 2px solid #9fb1b3; display: grid; place-items: center; font-size: 16px; flex: none; }
 .check.on { background: var(--ok); border-color: var(--ok); color: #fff; }
@@ -492,3 +494,23 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
 /* меню диспетчера: редкое — вниз */
 .desk-nav-bottom { margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(244, 240, 230, 0.12); display: grid; gap: 4px; }
 .desk-nav a small { opacity: 0.6; }
+
+/* ——— интерфейс по чек-листу: цели касания от 44 px, «назад», ручка панели, заглушки загрузки ——— */
+.tabbar a { min-height: 48px; display: grid; align-content: center; }
+.role-bar-tabs a { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.back-btn {
+  width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; align-self: center;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; margin-right: -2px;
+}
+.page-head:has(.back-btn) { justify-content: flex-start; }
+.page-head:has(.back-btn) > .page-sub:last-child, .page-head:has(.back-btn) > span:last-child:not(.page-clock) { margin-left: auto; }
+.sheet-handle { position: absolute; top: 8px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--line); }
+.app.no-tabbar .page { padding-bottom: calc(var(--safe-bottom) + 24px); }
+.text-btn { background: none; border: 0; color: var(--mute); font: inherit; font-size: 15px; min-height: 44px; cursor: pointer; justify-self: center; }
+.skeleton { display: grid; gap: 12px; padding-top: 4px; }
+.sk { display: block; border-radius: 18px; background: linear-gradient(90deg, var(--line) 0%, rgba(127, 127, 127, 0.08) 50%, var(--line) 100%); background-size: 200% 100%; animation: sk 1.2s ease-in-out infinite; opacity: 0.7; }
+.sk-title { height: 28px; width: 55%; border-radius: 10px; }
+.sk-card { height: 72px; }
+@keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } .btn:active:not(:disabled) { transform: none; } }
+.desk-nav a { min-height: 44px; display: flex; align-items: center; gap: 6px; box-sizing: border-box; }

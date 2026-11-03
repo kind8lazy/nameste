@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { phoneHref, routeHref } from '../../lib/platform';
-import { useAuth, dispatcherHome } from '../../lib/auth';
-import { Avatar, SwipeButton, Tag, useToast } from '../../components/ui';
+import { useAuth } from '../../lib/auth';
+import { Avatar, SwipeButton, Tag, useToast, Skeleton, BackButton } from '../../components/ui';
 import { PushCard } from '../../components/PushCard';
 import { Link } from 'react-router-dom';
 import { plural } from '@shared/ru';
@@ -20,7 +20,7 @@ export function Shift() {
   const [shift, setShift] = useState<ShiftView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
-  const { me, setMe } = useAuth();
+  const { me } = useAuth();
   const today = localDate();
   const [date, setDate] = useState(() => new URLSearchParams(window.location.search).get('date') ?? today);
   const isToday = date === today;
@@ -66,24 +66,9 @@ export function Shift() {
       <main className="page" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
         <div className="page-head">
           <Clock />
+          <BackButton to="/driver" label="Главная" />
           <h1 className="page-title">Смена</h1>
           <span className="page-sub">{shift?.dayLabel}</span>
-        </div>
-        <div className="btn-row">
-          {me?.roles.includes('dispatcher') && (
-            <Link to={dispatcherHome()} className="btn small secondary">
-              ‹ Диспетчерская
-            </Link>
-          )}
-          <button
-            className="btn small secondary"
-            onClick={async () => {
-              await api.post('/auth/logout');
-              setMe(null);
-            }}
-          >
-            Выйти
-          </button>
         </div>
         <Link to="/driver/chat" className="btn secondary block">
           Сообщения
@@ -106,7 +91,7 @@ export function Shift() {
         {isToday && !me?.lite && <Tracking shift={shift} />}
         {isToday && <PushCard compact />}
         {!shift || shift.date !== date ? (
-          <div className="empty">Загрузка…</div>
+          <Skeleton />
         ) : !shift.run ? (
           <div className="card empty">{isToday ? 'Сегодня смены нет' : `${shift.dayLabel}: смены нет`}</div>
         ) : isToday ? (

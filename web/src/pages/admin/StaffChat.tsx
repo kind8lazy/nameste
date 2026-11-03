@@ -1,9 +1,10 @@
 // Сообщения для диспетчера и водителя: все семьи и чат команды.
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ChatBrowser } from '../../components/Chat';
 import { useAuth } from '../../lib/auth';
 import { Clock } from '../../components/Clock';
 import { DeskNav } from './DeskNav';
+import { BackButton } from '../../components/ui';
 
 /** Диспетчер видит это на компьютере с меню слева, водитель — на телефоне. */
 export function StaffChat() {
@@ -16,10 +17,8 @@ export function StaffChat() {
         <main className="page">
           <div className="page-head">
             <Clock />
+            <BackButton to="/driver" label="Главная" />
             <h1 className="page-title">Сообщения</h1>
-            <Link to="/driver" className="btn small secondary">
-              ‹ Смена
-            </Link>
           </div>
           <ChatBrowser initial={params.get('thread')} />
         </main>

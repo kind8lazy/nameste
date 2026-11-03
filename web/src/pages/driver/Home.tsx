@@ -9,11 +9,12 @@ import type { ShiftView } from '@shared/api';
 import { addDays, formatDayRu, localDate, localTime } from '@shared/time';
 import { plural } from '@shared/ru';
 import { Clock } from '../../components/Clock';
+import { Skeleton } from '../../components/ui';
 
 const POINTS: [string, string, string] = ['точка', 'точки', 'точек'];
 
 export function DriverHome() {
-  const { me } = useAuth();
+  const { me, setMe } = useAuth();
   const unread = useUnread();
   const [week, setWeek] = useState<ShiftView[] | null>(null);
 
@@ -35,7 +36,7 @@ export function DriverHome() {
   if (!week)
     return (
       <main className="page">
-        <div className="empty">Загрузка…</div>
+        <Skeleton />
       </main>
     );
 
@@ -67,6 +68,15 @@ export function DriverHome() {
           <Tile to={nextDay ? `/driver/shift?date=${nextDay.date}` : '/driver/shift'} title="Неделя" sub={weekText} icon={<IconCalendar />} />
           <Tile to="/driver/chat" title="Сообщения" sub={unread ? `${unread} ${plural(unread, ['новое', 'новых', 'новых'])}` : 'Диспетчер и семьи'} accent={unread > 0} icon={<IconChat />} />
         </nav>
+        <button
+          className="text-btn"
+          onClick={async () => {
+            await api.post('/auth/logout');
+            setMe(null);
+          }}
+        >
+          Выйти из приложения
+        </button>
       </main>
     </div>
   );

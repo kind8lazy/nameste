@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
-import { useToast } from '../../components/ui';
+import { useToast, Skeleton, BackButton } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { PlaceForm, type PlacePayload } from '../../components/PlaceForm';
 import { MemberRow, NewTemplate, useDrivers, driverLabel, type Family, type Place, type Run } from './Clients';
@@ -64,7 +64,7 @@ export function FamilyCard() {
 
   const nav = <DeskNav />;
 
-  if (family === undefined) return <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>{nav}<main className="desk-main"><div className="empty">Загрузка…</div></main></div>;
+  if (family === undefined) return <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>{nav}<main className="desk-main"><Skeleton rows={4} /></main></div>;
   if (family === null)
     return (
       <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
@@ -84,12 +84,8 @@ export function FamilyCard() {
       <main className="desk-main" style={{ maxWidth: 980 }}>
         <div className="page-head">
           <Clock />
-          <div style={{ display: 'grid', gap: 4 }}>
-            <Link to="/admin/clients" className="page-sub">
-              ‹ Клиенты
-            </Link>
-            <h1 className="page-title">{family.name}</h1>
-          </div>
+          <BackButton to="/admin/clients" label="Семьи" />
+          <h1 className="page-title" style={{ flex: 1 }}>{family.name}</h1>
           <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <Link to={`/admin/chat?thread=${encodeURIComponent(`family:${family.id}`)}`} className="btn small">
               Написать

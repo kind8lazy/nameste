@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { groupTrips, tripState, currentTarget, type Trip } from '../lib/trips';
-import { Avatar, Steps, Tag } from '../components/ui';
+import { Avatar, Steps, Tag, Skeleton } from '../components/ui';
 import { MiniMap } from '../components/MiniMap';
 import { LiveFreshness } from '../components/LiveFreshness';
 import type { ParentDay } from '@shared/api';
@@ -51,7 +51,7 @@ export function Track() {
           <span className="page-sub">{day?.dayLabel}</span>
         </div>
         {error && !day && <div className="note error">{error}</div>}
-        {!day && !error && <div className="empty">Загрузка…</div>}
+        {!day && !error && <Skeleton />}
         {day && !featured && <div className="card empty">Сегодня поездок нет</div>}
         {day && featured && <TrackCard trip={featured} day={day} token={token} />}
         {day && trips.length > 1 && (

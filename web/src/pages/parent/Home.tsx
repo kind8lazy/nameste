@@ -5,7 +5,7 @@ import { Tile, IconCar, IconCalendar, IconPause, IconPlus, IconClock, IconChat }
 import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { useAuth } from '../../lib/auth';
-import { useToast } from '../../components/ui';
+import { useToast, Skeleton } from '../../components/ui';
 import { useUnread } from '../../components/Chat';
 import { AbsenceSheet, type ChangeRow } from './Requests';
 import { Today } from './Today';
@@ -48,7 +48,7 @@ export function Home() {
   if (!day)
     return (
       <main className="page">
-        <div className="empty">Загрузка…</div>
+        <Skeleton rows={4} />
       </main>
     );
 

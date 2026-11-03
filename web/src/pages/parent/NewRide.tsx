@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
-import { Avatar } from '../../components/ui';
+import { Avatar, BackButton } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import type { ParentDay } from '@shared/api';
 import { addDays, localDate, WEEKDAYS_SHORT, weekday } from '@shared/time';
@@ -109,10 +109,8 @@ export function NewRide() {
     <main className="page">
       <div className="page-head">
         <Clock />
+        <BackButton to="/app" label="Отмена" />
         <h1 className="page-title">Новая поездка</h1>
-        <Link to="/app/week" className="page-sub">
-          Отмена
-        </Link>
       </div>
 
       {!places.length && (

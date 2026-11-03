@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { groupTrips, tripState, currentTarget, type Trip } from '../../lib/trips';
 import { phoneHref } from '../../lib/platform';
-import { Avatar, Steps, Tag, useToast } from '../../components/ui';
+import { Avatar, Steps, Tag, useToast, Skeleton, BackButton } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
 import { PushCard } from '../../components/PushCard';
 import { DemoCard } from '../../components/DemoCard';
@@ -47,7 +47,7 @@ export function Today() {
   const others = trips.filter((t) => t !== featured);
 
   if (error && !day) return <div className="page"><div className="note error">{error}</div></div>;
-  if (!day) return <div className="page"><div className="empty">Загрузка…</div></div>;
+  if (!day) return <div className="page"><Skeleton /></div>;
 
   if (me && !me.families.length && !me.roles.includes('dispatcher')) {
     return (
@@ -65,6 +65,7 @@ export function Today() {
     <main className="page">
       <div className="page-head">
         <Clock />
+        <BackButton to="/app" label="Главная" />
         <h1 className="page-title">Сегодня</h1>
       </div>
       {day.children.length > 0 && (

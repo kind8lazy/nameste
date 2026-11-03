@@ -11,6 +11,7 @@ import type { AdminDay } from '@shared/api';
 import { localDate } from '@shared/time';
 import { plural } from '@shared/ru';
 import { Clock } from '../../components/Clock';
+import { Skeleton } from '../../components/ui';
 
 export function DispatcherHome() {
   const { me } = useAuth();
@@ -33,7 +34,7 @@ export function DispatcherHome() {
   if (!data)
     return (
       <main className="page">
-        <div className="empty">Загрузка…</div>
+        <Skeleton rows={5} />
       </main>
     );
   const { day, changes, requests } = data;

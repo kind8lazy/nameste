@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { useStream } from '../../lib/stream';
 import { groupTrips, tripState } from '../../lib/trips';
-import { Tag, useToast } from '../../components/ui';
+import { Tag, useToast, Skeleton } from '../../components/ui';
 import { RideSheet } from './RideSheet';
 import { MyRequests, MyChanges, AbsenceSheet } from './Requests';
 import { Link } from 'react-router-dom';
@@ -103,7 +103,7 @@ export function Week() {
       )}
 
       {!week ? (
-        <div className="empty">Загрузка…</div>
+        <Skeleton />
       ) : trips.length === 0 ? (
         <div className="card empty">В этот день поездок нет</div>
       ) : (
