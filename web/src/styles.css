@@ -196,7 +196,7 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 .week-strip button.today:not(.on) { border-color: var(--gold); }
 
 /* ——— листы снизу ——— */
-.sheet-backdrop { position: fixed; inset: 0; background: rgba(10, 20, 24, 0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(10, 20, 24, 0.45); z-index: 80; display: flex; align-items: flex-end; justify-content: center; }
 .sheet { position: relative; background: var(--card); color: var(--ink); width: 100%; max-width: 560px; border-radius: 24px 24px 0 0; padding: 26px 20px calc(var(--safe-bottom) + 20px); transition: transform 0.2s ease-out; display: grid; gap: 12px; max-height: 88vh; overflow: auto; }
 .sheet h3 { font-size: 20px; }
 .field { display: grid; gap: 6px; }
@@ -208,7 +208,7 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; 
 .note.plain { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
 .note.error { background: var(--alert-bg); color: var(--alert); }
 .empty { text-align: center; color: var(--mute); padding: 28px 12px; font-size: 15px; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 90px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 60; max-width: 90vw; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 90px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 90; max-width: 90vw; }
 
 /* ——— свайп-подтверждение ——— */
 .swipe { position: relative; height: 56px; border-radius: 28px; background: var(--gold); color: #241a07; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; padding: 0 20px 0 64px; user-select: none; touch-action: none; overflow: hidden; }
@@ -514,3 +514,23 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
 @keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; } .btn:active:not(:disabled) { transform: none; } }
 .desk-nav a { min-height: 44px; display: flex; align-items: center; gap: 6px; box-sizing: border-box; }
+
+/* ——— карточка семьи: компактные списки, «⋯» и действия в нижней панели ——— */
+.fc-block { display: grid; gap: 8px; }
+.fc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; }
+.fc-row { display: flex; align-items: center; gap: 10px; padding: 10px 6px 10px 14px; min-height: 52px; box-sizing: border-box; }
+.fc-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.fc-main b { font-weight: 600; }
+.fc-main small { color: var(--mute); font-size: 13px; }
+.fc-muted { color: var(--mute); font-weight: 400; }
+.fc-code { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.fc-code .mono { font-size: 20px; letter-spacing: 0.12em; user-select: all; }
+.more-btn { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 0; background: transparent; color: var(--mute); display: grid; place-items: center; cursor: pointer; }
+.more-btn:hover { background: var(--line); color: var(--ink); }
+.sheet-actions { display: grid; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.sheet-action { min-height: 52px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
+.sheet-action:last-child { border-bottom: 0; }
+.sheet-action:hover { background: var(--bg); }
+.sheet-action.danger { color: var(--alert); }
+/* форма внутри панели не нуждается в своей карточке */
+.sheet > .card { border: 0; box-shadow: none; padding: 0 !important; background: transparent; }

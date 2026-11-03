@@ -36,6 +36,13 @@ export function Sheet({ open, onClose, children }: { open: boolean; onClose: () 
   const start = useRef<number | null>(null);
   const dragRef = useRef(0);
   const [drag, setDrag] = useState(0);
+  // на компьютере панель закрывается клавишей Esc
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
   if (!open) return null;
   return (
     <div className="sheet-backdrop" onClick={onClose} role="presentation">
