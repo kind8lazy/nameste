@@ -15,7 +15,22 @@ interface NotificationRow {
   createdAt: string;
 }
 
+interface Status {
+  provider: string;
+  testMode: boolean;
+  mail: string;
+  mailFrom: string;
+  yandex: boolean;
+  demo: boolean;
+}
+
 export function Settings() {
+  const [status, setStatus] = useState<Status | null>(null);
+  const [testEmail, setTestEmail] = useState('');
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  useEffect(() => {
+    api.get<Status>('/admin/sms').then(setStatus).catch(() => setStatus(null));
+  }, []);
   const { me, setMe } = useAuth();
   const [log, setLog] = useState<NotificationRow[]>([]);
   const [logins, setLogins] = useState(false);
@@ -35,6 +50,63 @@ export function Settings() {
           <Clock />
           <h1 className="page-title">Настройки</h1>
         </div>
+
+        <section className="fc-block">
+          <h3>Подключения</h3>
+          {status && (
+            <ul className="list">
+              <li className="fc-row">
+                <span className="fc-main">
+                  <b>Письма на почту</b>
+                  <small>{status.mail === 'none' ? 'выключены' : status.mail === 'log' ? 'проверка без отправки' : `включены · ${status.mailFrom}`}</small>
+                </span>
+              </li>
+              <li className="fc-row">
+                <span className="fc-main">
+                  <b>Вход через Яндекс</b>
+                  <small>{status.yandex ? 'включён' : 'не настроен'}</small>
+                </span>
+              </li>
+              {status.provider !== 'none' && (
+                <li className="fc-row">
+                  <span className="fc-main">
+                    <b>SMS</b>
+                    <small>{status.provider === 'log' ? 'проверка без отправки' : `${status.provider === 'yandex' ? 'Яндекс' : 'sms.ru'}, ${status.testMode ? 'тест' : 'боевой'}`}</small>
+                  </span>
+                </li>
+              )}
+              <li className="fc-row">
+                <span className="fc-main">
+                  <b>Демо-режим</b>
+                  <small>{status.demo ? 'включён' : 'выключен'}</small>
+                </span>
+              </li>
+            </ul>
+          )}
+          <form
+            className="btn-row"
+            style={{ alignItems: 'end', flexWrap: 'wrap' }}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setTestMsg(null);
+              try {
+                const r = await api.post<{ ok: boolean; error?: string }>('/admin/mail/test', { email: testEmail });
+                setTestMsg(r.ok ? 'Проверочное письмо отправлено' : `Письмо не ушло: ${r.error}`);
+              } catch (err) {
+                setTestMsg((err as Error).message);
+              }
+            }}
+          >
+            <div className="field" style={{ flex: 2, minWidth: 220 }}>
+              <label htmlFor="mail-test">Проверить письма: адрес почты</label>
+              <input id="mail-test" type="email" className="input" placeholder="name@yandex.ru" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} />
+            </div>
+            <button className="btn secondary" style={{ flex: 1 }} disabled={!testEmail.includes('@')}>
+              Отправить проверочное
+            </button>
+          </form>
+          {testMsg && <small className="page-sub">{testMsg}</small>}
+        </section>
 
         <section style={{ display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>

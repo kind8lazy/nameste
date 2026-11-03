@@ -1,6 +1,6 @@
 // Меню диспетчера — одно на всех экранах: пять разделов на каждый день и настройки внизу.
 import { useCallback, useEffect, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { Badge, useUnread } from '../../components/Chat';
@@ -22,9 +22,6 @@ export function useInboxCount(): number {
 export function DeskNav() {
   const unread = useUnread();
   const inbox = useInboxCount();
-  const { pathname, hash } = useLocation();
-  // «Водители и доступ» пока живут на странице клиентов, в разделе #access
-  const access = pathname === '/admin/clients' && hash === '#access';
   return (
     <nav className="desk-nav">
       <div className="wordmark">
@@ -39,12 +36,8 @@ export function DeskNav() {
         Входящие
         <Badge n={inbox} />
       </NavLink>
-      <NavLink to="/admin/clients" className={({ isActive }) => (isActive && !access ? 'active' : '')}>
-        Семьи
-      </NavLink>
-      <Link to="/admin/clients#access" className={access ? 'active' : ''}>
-        Водители и доступ
-      </Link>
+      <NavLink to="/admin/clients">Семьи</NavLink>
+      <NavLink to="/admin/access">Водители и доступ</NavLink>
       <NavLink to="/admin/chat">
         Сообщения
         <Badge n={unread} />

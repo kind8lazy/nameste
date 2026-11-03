@@ -11,7 +11,8 @@ const ROLE_NAME: Record<RoleKey, string> = { dispatcher: 'Диспетчер', d
 /** Раздел по адресу: от более точного к общему. */
 const SECTIONS: [RegExp, RoleKey, string][] = [
   [/^\/admin\/clients\/[^/]+/, 'dispatcher', 'Карточка семьи'],
-  [/^\/admin\/clients/, 'dispatcher', 'Клиенты'],
+  [/^\/admin\/clients/, 'dispatcher', 'Семьи'],
+  [/^\/admin\/access/, 'dispatcher', 'Водители и доступ'],
   [/^\/admin\/chat/, 'dispatcher', 'Сообщения'],
   [/^\/admin\/m$/, 'dispatcher', 'Главная'],
   [/^\/admin\/inbox/, 'dispatcher', 'Входящие'],

@@ -24,6 +24,7 @@ import { DriverHome } from './pages/driver/Home';
 import { DispatcherHome } from './pages/admin/Home';
 import { Inbox } from './pages/admin/Inbox';
 import { Settings } from './pages/admin/Settings';
+import { Access } from './pages/admin/Access';
 import { Board } from './pages/admin/Board';
 import { Clients } from './pages/admin/Clients';
 import { FamilyCard } from './pages/admin/FamilyCard';
@@ -93,6 +94,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireRole roles={['dispatcher']}>
                 <Inbox />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/access"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <Access />
               </RequireRole>
             }
           />

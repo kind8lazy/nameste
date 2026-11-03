@@ -534,3 +534,6 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
 .sheet-action.danger { color: var(--alert); }
 /* форма внутри панели не нуждается в своей карточке */
 .sheet > .card { border: 0; box-shadow: none; padding: 0 !important; background: transparent; }
+.fc-link { text-decoration: none; color: inherit; padding-right: 14px; }
+.fc-link:hover { background: var(--bg); }
+input[type='search'].input { min-height: 48px; }

@@ -72,7 +72,8 @@ export function DispatcherHome() {
             icon={<IconInbox />}
           />
           <Tile to="/admin" title="Рейсы сегодня" sub={runsText} accent={active > 0} icon={<IconRoute />} />
-          <Tile to="/admin/clients" title="Клиенты" sub="Семьи, места, поездки по расписанию, водители и коды входа" icon={<IconUsers />} />
+          <Tile to="/admin/clients" title="Семьи" sub="Дети, места и поездки по расписанию" icon={<IconUsers />} />
+          <Tile to="/admin/access" title="Водители и доступ" sub="Сотрудники и коды входа" icon={<IconCar />} />
           <Tile to="/admin/chat" title="Сообщения" sub={unread ? `${unread} ${plural(unread, ['новое', 'новых', 'новых'])}` : 'Семьи и водители'} accent={unread > 0} icon={<IconChat />} />
           {me?.roles.includes('driver') && <Tile to="/driver" title="Моя смена" sub="Вы тоже водитель — ваш рейс и неделя" icon={<IconCar />} />}
         </nav>
