@@ -302,6 +302,7 @@ function MockTile({ title, sub, icon, accent }: { title: string; sub: string; ic
 /** Вход по коду: отдельный экран, 8 крупных ячеек, клавиатура цифр сразу, вход сам после 8-й цифры. */
 function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }: { code: string; setCode: (v: string) => void; busy: boolean; error: string | null; onSubmit: () => void; onBack: () => void; yandexHref: string | null }) {
   const input = useRef<HTMLInputElement>(null);
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
   // фокус сразу и снова после проверки — клавиатура не закрывается после ошибки
   useEffect(() => {
     if (!busy) input.current?.focus();
@@ -336,10 +337,14 @@ function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }
             pattern="[0-9]*"
             autoComplete="one-time-code"
             aria-label="Код из приглашения"
-            maxLength={8}
             value={code}
             readOnly={busy}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            onChange={(e) => setCode(extractCode(e.target.value))}
+            onPaste={(e) => {
+              // вставка целого сообщения «Код: 1234 5678 …» — берём из него только код
+              e.preventDefault();
+              setCode(extractCode(e.clipboardData.getData('text')));
+            }}
           />
           {Array.from({ length: 8 }, (_, i) => (
             <span key={i} className={`otp-cell${i === Math.min(code.length, 7) && !busy ? ' on' : ''}${code[i] ? ' filled' : ''}${error ? ' bad' : ''}`} aria-hidden>
@@ -348,6 +353,21 @@ function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }
           ))}
         </label>
         {error ? <div className="note error">{error}</div> : <small className="code-hint">{busy ? 'Проверяю…' : 'Код действует 3 дня. После 8-й цифры войдём сами.'}</small>}
+        {!code && canPaste && (
+          <button
+            type="button"
+            className="welcome-btn ghost"
+            onClick={async () => {
+              try {
+                setCode(extractCode(await navigator.clipboard.readText()));
+              } catch {
+                input.current?.focus();
+              }
+            }}
+          >
+            Вставить скопированный код
+          </button>
+        )}
         <button className="welcome-btn primary" disabled={busy || code.length < 6}>
           {busy ? 'Проверяю…' : 'Войти'}
         </button>
@@ -359,4 +379,10 @@ function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }
       </form>
     </div>
   );
+}
+
+/** Код из вставленного текста: пробелы, дефисы и слова вокруг не мешают. Сначала ищем отдельное число из 6–8 цифр. */
+export function extractCode(text: string): string {
+  const run = text.match(/(?<!\d)\d[\d\s-]{4,14}\d(?!\d)/g)?.map((m) => m.replace(/\D/g, '')).find((d) => d.length >= 6 && d.length <= 8);
+  return (run ?? text.replace(/\D/g, '')).slice(0, 8);
 }
