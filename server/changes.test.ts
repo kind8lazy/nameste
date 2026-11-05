@@ -81,4 +81,14 @@ describe('просьбы родителя — только с согласия �
       vi.useRealTimers();
     }
   });
+
+  it('смена адреса места — только после согласия диспетчера, затем рейсы с этим местом пересобираются', async () => {
+    const c = createChange('f', 'mom', { kind: 'place', placeId: 'b', address: 'проспект Динамо, 14', lat: 59.97, lon: 30.27 });
+    expect(c.summary).toContain('→ проспект Динамо, 14');
+    expect(db.select().from(schema.places).where(eq(schema.places.id, 'b')).get()!.address).toBe('y');
+    expect(() => createChange('f', 'mom', { kind: 'place', placeId: 'b', address: 'другой', lat: 59.9, lon: 30.3 })).toThrow('уже есть просьба');
+    await acceptChange(c.id, 'disp');
+    const p = db.select().from(schema.places).where(eq(schema.places.id, 'b')).get()!;
+    expect([p.address, p.lat]).toEqual(['проспект Динамо, 14', 59.97]);
+  });
 });

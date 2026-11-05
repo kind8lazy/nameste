@@ -57,7 +57,7 @@ export function DispatcherHome() {
           <Tile
             to="/admin/inbox"
             title="Просьбы родителей"
-            sub={waiting.length ? `${waiting.length} ${plural(waiting.length, ['ждёт', 'ждут', 'ждут'])} решения · ${waiting[0].childName}: ${waiting[0].summary}` : 'Новых просьб нет'}
+            sub={waiting.length ? `${waiting.length} ${plural(waiting.length, ['ждёт', 'ждут', 'ждут'])} решения · ${waiting[0].childName || waiting[0].familyName}: ${waiting[0].summary}` : 'Новых просьб нет'}
             accent={waiting.length > 0}
             icon={<IconClock />}
           />

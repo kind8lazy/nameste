@@ -1,7 +1,7 @@
 // Родитель: день, неделя, подтверждение и отмена.
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, gte, inArray, or } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { config } from '../config';
 import { dateField, timeField, planDateField } from '../lib/validate';
@@ -17,6 +17,7 @@ import { geocode } from '../modules/geo';
 import { placeInput, addFamilyPlace } from '../modules/places';
 import { quote } from '../../shared/pricing';
 import { createChange, listChanges, withdrawChange, ABSENCE_REASONS } from '../modules/changes';
+import { notifyUsers } from '../modules/notify';
 
 const dateSchema = dateField;
 
@@ -163,11 +164,21 @@ export async function parentRoutes(app: FastifyInstance) {
   /** Места, из которых родитель выбирает «откуда» и «куда»: свои и общие (школы, секции). */
   app.get('/parent/places', async (req) => {
     const { familyIds } = parentFamilies(req);
-    return db
-      .select({ id: schema.places.id, name: schema.places.name, address: schema.places.address, familyId: schema.places.familyId })
+    const rows = db
+      .select({ id: schema.places.id, name: schema.places.name, address: schema.places.address, entranceNote: schema.places.entranceNote, familyId: schema.places.familyId })
       .from(schema.places)
       .where(inArray(schema.places.familyId, familyIds.length ? familyIds : ['-']))
       .all();
+    // новый адрес, который ещё ждёт согласия диспетчера, — чтобы клиент видел, что просьба в пути
+    const pending = db
+      .select({ id: schema.changeRequests.id, placeId: schema.changeRequests.placeId, address: schema.changeRequests.address })
+      .from(schema.changeRequests)
+      .where(and(eq(schema.changeRequests.kind, 'place'), eq(schema.changeRequests.status, 'new'), inArray(schema.changeRequests.familyId, familyIds.length ? familyIds : ['-'])))
+      .all();
+    return rows.map((r) => {
+      const p = pending.find((c) => c.placeId === r.id);
+      return { ...r, pendingAddress: p ? { changeId: p.id, address: p.address } : null };
+    });
   });
 
   /** Клиент добавляет место в своём профиле. Менять места может владелец семьи или тот, кому он разрешил. */
@@ -178,6 +189,58 @@ export async function parentRoutes(app: FastifyInstance) {
     if (!familyId) throw new HttpError(403, 'Добавлять места может только владелец семьи. Попросите его или диспетчера.');
     const p = placeInput.parse(req.body);
     return { id: addFamilyPlace(familyId, p) };
+  });
+
+  // ——— свои места: название и «как пройти» — сразу, адрес — просьбой диспетчеру, удаление — если поездок нет
+  const ownPlace = (req: FastifyRequest, placeId: string) => {
+    const { user, familyIds } = parentFamilies(req);
+    const p = db.select().from(schema.places).where(eq(schema.places.id, placeId)).get();
+    if (!p || !p.familyId || !familyIds.includes(p.familyId)) throw new HttpError(403, 'Это не ваше место');
+    requireEditor(user.id, p.familyId);
+    return { user, place: p };
+  };
+  /** Кому сказать об изменении места: диспетчерам и водителям, у кого это место в рейсах впереди. */
+  const placeAudience = (placeId: string) => {
+    const dispatchers = db.select().from(schema.users).all().filter((u) => u.roles.includes('dispatcher')).map((u) => u.id);
+    const drivers = db
+      .select({ driverId: schema.runs.driverId })
+      .from(schema.stops)
+      .innerJoin(schema.runs, eq(schema.runs.id, schema.stops.runId))
+      .where(and(eq(schema.stops.placeId, placeId), gte(schema.runs.date, localDate())))
+      .all()
+      .map((r) => r.driverId);
+    return [...new Set([...dispatchers, ...drivers])];
+  };
+
+  app.patch('/parent/places/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const b = z.object({ name: placeInput.shape.name.optional(), entranceNote: z.string().trim().max(200, 'слишком длинно').optional() }).parse(req.body);
+    const { place } = ownPlace(req, id);
+    db.update(schema.places)
+      .set({ ...(b.name ? { name: b.name } : {}), ...(b.entranceNote !== undefined ? { entranceNote: b.entranceNote || null } : {}) })
+      .where(eq(schema.places.id, id))
+      .run();
+    const what = [b.name && b.name !== place.name ? `название «${b.name}»` : null, b.entranceNote !== undefined && (b.entranceNote || null) !== place.entranceNote ? `как пройти: ${b.entranceNote || '—'}` : null].filter(Boolean);
+    if (what.length) void notifyUsers(placeAudience(id), 'place_changed', { title: `Семья изменила место «${place.name}»`, body: what.join(' · '), priority: 'info', url: '/admin/clients' });
+    return { ok: true };
+  });
+
+  app.delete('/parent/places/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    ownPlace(req, id);
+    const used =
+      db.select({ id: schema.rideTemplates.id }).from(schema.rideTemplates).where(and(eq(schema.rideTemplates.active, true), or(eq(schema.rideTemplates.fromPlaceId, id), eq(schema.rideTemplates.toPlaceId, id)))).get() ||
+      db.select({ id: schema.rides.id }).from(schema.rides).where(or(eq(schema.rides.fromPlaceId, id), eq(schema.rides.toPlaceId, id))).get();
+    if (used) throw new HttpError(409, 'Это место есть в поездках. Чтобы его удалить, попросите диспетчера остановить эти поездки.');
+    db.delete(schema.places).where(eq(schema.places.id, id)).run();
+    return { ok: true };
+  });
+
+  app.post('/parent/places/:id/address', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const b = placeInput.pick({ address: true, lat: true, lon: true }).parse(req.body);
+    const { user, place } = ownPlace(req, id);
+    return createChange(place.familyId!, user.id, { kind: 'place', placeId: id, ...b });
   });
 
   app.get('/parent/geocode', async (req) => {

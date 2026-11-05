@@ -3,9 +3,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
-import { Avatar } from '../../components/ui';
+import { Avatar, Sheet, useToast } from '../../components/ui';
 import { PushCard } from '../../components/PushCard';
-import { PlaceForm, type PlacePayload } from '../../components/PlaceForm';
+import { PlaceForm, AddressPicker, type PlacePayload, type FoundPlace } from '../../components/PlaceForm';
+import { MoreButton, PanelSheet, type Panel } from '../admin/Panels';
+import { undoable } from './Requests';
 import { YandexCodeLogin } from '../../components/YandexCodeLogin';
 import { isIOS, isStandalone } from '../../lib/platform';
 import type { ParentDay } from '@shared/api';
@@ -162,48 +164,154 @@ interface PlaceRow {
   id: string;
   name: string;
   address: string;
+  entranceNote: string | null;
   familyId: string | null;
+  pendingAddress: { changeId: string; address: string | null } | null;
 }
 
-/** Места семьи: дом, школа, секции. Клиент добавляет их сам, а потом выбирает «откуда» и «куда» в новой поездке. */
+/** Места семьи: дом, школа, секции. Клиент добавляет их сам, а потом выбирает «откуда» и «куда» в новой поездке.
+ *  Название и «как пройти» меняются сразу (диспетчер и водители получат уведомление), новый адрес — только с согласия диспетчера:
+ *  от адреса зависят маршрут и время в пути. Удалить можно место, по которому нет поездок. */
 function FamilyPlaces({ canEdit }: { canEdit: boolean }) {
   const [places, setPlaces] = useState<PlaceRow[] | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const [moving, setMoving] = useState<PlaceRow | null>(null);
+  const toast = useToast();
   const load = useCallback(async () => setPlaces((await api.get<PlaceRow[]>('/parent/places')).filter((p) => p.familyId)), []);
   useEffect(() => {
     void load().catch(() => setPlaces([]));
   }, [load]);
+  const reload = () => void load().catch(() => {});
+  const ask = undoable(toast, reload);
 
   const save = async (p: PlacePayload) => {
     try {
       await api.post('/parent/places', p);
-      setToast('Место добавлено. Теперь его можно выбрать в новой поездке.');
+      toast.show('Место добавлено. Теперь его можно выбрать в новой поездке.');
       await load();
       return true;
     } catch (e) {
-      setToast((e as Error).message);
+      toast.show((e as Error).message);
       return false;
     }
   };
+
+  const menu = (p: PlaceRow) =>
+    setPanel({
+      kind: 'menu',
+      title: p.name,
+      sub: p.address,
+      actions: [
+        { label: 'Изменить название и «как пройти»', onClick: () => setPanel(editForm(p)) },
+        ...(p.pendingAddress ? [] : [{ label: 'Сменить адрес', onClick: () => (setPanel(null), setMoving(p)) }]),
+        { label: 'Удалить место', danger: true, onClick: () => setPanel(removeConfirm(p)) },
+      ],
+    });
+  const editForm = (p: PlaceRow): Panel => ({
+    kind: 'form',
+    title: p.name,
+    fields: [
+      { key: 'name', label: 'Название', value: p.name },
+      { key: 'entranceNote', label: 'Как пройти (увидит водитель)', value: p.entranceNote ?? '', placeholder: 'Вход со двора, 2 этаж' },
+    ],
+    save: async (v) => {
+      try {
+        await api.patch(`/parent/places/${p.id}`, { name: v.name.trim(), entranceNote: v.entranceNote.trim() });
+        setPanel(null);
+        toast.show('Сохранено. Диспетчер и водители увидят изменения.');
+        reload();
+        return true;
+      } catch (e) {
+        toast.show((e as Error).message);
+        return false;
+      }
+    },
+  });
+  const removeConfirm = (p: PlaceRow): Panel => ({
+    kind: 'confirm',
+    title: `Удалить «${p.name}»?`,
+    text: 'Место пропадёт из списка «откуда» и «куда». Если по нему есть поездки, удалить не получится — сначала их должен остановить диспетчер.',
+    confirm: 'Удалить место',
+    onConfirm: async () => {
+      try {
+        await api.del(`/parent/places/${p.id}`);
+        setPanel(null);
+        toast.show('Место удалено');
+        reload();
+        return true;
+      } catch (e) {
+        setPanel(null);
+        toast.show((e as Error).message);
+        return false;
+      }
+    },
+  });
 
   return (
     <>
       <div className="section-label">Мои места</div>
       <ul className="list">
         {places?.map((p) => (
-          <li key={p.id} style={{ padding: '12px 14px', display: 'grid' }}>
-            <b>{p.name}</b>
-            <small className="page-sub">{p.address}</small>
+          <li key={p.id} className="place-row">
+            <span>
+              <b>{p.name}</b>
+              <small className="page-sub">{p.address}</small>
+              {p.entranceNote && <small className="page-sub">Как пройти: {p.entranceNote}</small>}
+              {p.pendingAddress && <small className="place-pending">Новый адрес ждёт ответа диспетчера: {p.pendingAddress.address}</small>}
+            </span>
+            {canEdit && <MoreButton label={`Изменить «${p.name}»`} onClick={() => menu(p)} />}
           </li>
         ))}
         {places && !places.length && <li className="empty">Мест пока нет. Добавьте дом, школу и секции.</li>}
       </ul>
-      {toast && (
-        <div className="note plain" role="status">
-          {toast}
-        </div>
+      {canEdit ? <PlaceForm geocodePath="/parent/geocode" onSave={save} title="Добавить место" /> : <p className="page-sub">Добавлять и менять места может владелец семьи или диспетчер.</p>}
+      <PanelSheet panel={panel} onClose={() => setPanel(null)} />
+      {moving && (
+        <MoveSheet
+          place={moving}
+          onClose={() => setMoving(null)}
+          onSent={(changeId) => {
+            setMoving(null);
+            ask('Новый адрес отправлен диспетчеру. Он поменяется после согласия.', changeId);
+            reload();
+          }}
+        />
       )}
-      {canEdit ? <PlaceForm geocodePath="/parent/geocode" onSave={save} title="Добавить место" /> : <p className="page-sub">Добавлять места может владелец семьи или диспетчер.</p>}
+      {toast.node}
     </>
+  );
+}
+
+/** Новый адрес места: те же подсказки и карта, что при добавлении. Уходит просьбой диспетчеру. */
+function MoveSheet({ place, onClose, onSent }: { place: PlaceRow; onClose: () => void; onSent: (changeId: string) => void }) {
+  const [picked, setPicked] = useState<FoundPlace | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const send = async () => {
+    if (!picked) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.post<{ id: string }>(`/parent/places/${place.id}/address`, { address: picked.address, lat: picked.lat, lon: picked.lon });
+      onSent(r.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Sheet open onClose={onClose}>
+      <div>
+        <h3>Новый адрес «{place.name}»</h3>
+        <div className="page-sub">Сейчас: {place.address}</div>
+      </div>
+      <AddressPicker geocodePath="/parent/geocode" picked={picked} onPick={setPicked} mapName={place.name} label="Новый адрес" />
+      <small className="page-sub">От адреса зависят маршрут и время в пути, поэтому он поменяется после согласия диспетчера. Поездки до этого идут по старому адресу.</small>
+      {error && <div className="note error">{error}</div>}
+      <button className="btn block" disabled={!picked || busy} onClick={() => void send()}>
+        {busy ? 'Отправляю…' : 'Отправить диспетчеру'}
+      </button>
+    </Sheet>
   );
 }

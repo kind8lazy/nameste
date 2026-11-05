@@ -444,10 +444,14 @@ export const changeRequests = sqliteTable(
     requestedBy: text('requested_by')
       .notNull()
       .references(() => users.id),
-    kind: text('kind').$type<'cancel' | 'time' | 'absence'>().notNull(),
-    childId: text('child_id')
-      .notNull()
-      .references(() => children.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<'cancel' | 'time' | 'absence' | 'place'>().notNull(),
+    /** у просьбы про адрес места ребёнка нет */
+    childId: text('child_id').references(() => children.id, { onDelete: 'cascade' }),
+    /** для смены адреса — какое место и новый адрес с координатами */
+    placeId: text('place_id').references(() => places.id, { onDelete: 'cascade' }),
+    address: text('address'),
+    lat: real('lat'),
+    lon: real('lon'),
     /** для отмены и переноса — какая поездка */
     rideId: text('ride_id').references(() => rides.id, { onDelete: 'cascade' }),
     dateFrom: text('date_from').notNull(),

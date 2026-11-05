@@ -1,6 +1,6 @@
 // Просьбы родителей изменить план: отменить поездку, перенести время забора, «ребёнка не будет».
 // Родитель только просит — применяет диспетчер, потому что только он знает, что могут водители.
-import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte, or } from 'drizzle-orm';
 import { db, schema } from '../db/client';
 import { newId } from '../lib/ids';
 import { HttpError } from './auth';
@@ -24,11 +24,13 @@ export const ABSENCE_REASONS = ['Болезнь', 'Семейные обстоя
 export type ChangeInput =
   | { kind: 'cancel'; rideId: string; reason?: string }
   | { kind: 'time'; rideId: string; time: string; reason?: string }
-  | { kind: 'absence'; childId: string; dateFrom: string; dateTo: string; reason: string };
+  | { kind: 'absence'; childId: string; dateFrom: string; dateTo: string; reason: string }
+  | { kind: 'place'; placeId: string; address: string; lat: number; lon: number };
 
 export function createChange(familyId: string, userId: string, input: ChangeInput) {
-  let childId: string;
+  let childId: string | null = null;
   let rideId: string | null = null;
+  let place: { placeId: string; address: string; lat: number; lon: number } | null = null;
   let dateFrom: string;
   let dateTo: string;
   const today = localDate();
@@ -41,6 +43,17 @@ export function createChange(familyId: string, userId: string, input: ChangeInpu
     childId = kid.id;
     dateFrom = input.dateFrom;
     dateTo = input.dateTo;
+  } else if (input.kind === 'place') {
+    const p = db.select().from(schema.places).where(eq(schema.places.id, input.placeId)).get();
+    if (!p || p.familyId !== familyId) throw new HttpError(403, 'Это не ваше место');
+    const pending = db
+      .select()
+      .from(schema.changeRequests)
+      .where(and(eq(schema.changeRequests.placeId, p.id), eq(schema.changeRequests.status, 'new')))
+      .get();
+    if (pending) throw new HttpError(409, 'По этому месту уже есть просьба, она ждёт ответа диспетчера');
+    place = { placeId: p.id, address: input.address, lat: input.lat, lon: input.lon };
+    dateFrom = dateTo = today;
   } else {
     const ride = getRide(input.rideId);
     if (ride.familyId !== familyId) throw new HttpError(403, 'Это не ваша поездка');
@@ -59,7 +72,7 @@ export function createChange(familyId: string, userId: string, input: ChangeInpu
 
   const id = newId('chg');
   db.insert(schema.changeRequests)
-    .values({ id, familyId, requestedBy: userId, kind: input.kind, childId, rideId, dateFrom, dateTo, time: input.kind === 'time' ? input.time : null, reason: input.reason?.trim() || null })
+    .values({ id, familyId, requestedBy: userId, kind: input.kind, childId, rideId, ...place, dateFrom, dateTo, time: input.kind === 'time' ? input.time : null, reason: 'reason' in input ? input.reason?.trim() || null : null })
     .run();
   const view = changeViews([db.select().from(schema.changeRequests).where(eq(schema.changeRequests.id, id)).get()!])[0];
   const dispatchers = db.select().from(schema.users).all().filter((u) => u.roles.includes('dispatcher'));
@@ -85,16 +98,20 @@ export function changeViews(rows: Change[]) {
   const fams = new Map(db.select().from(schema.families).all().map((f) => [f.id, f.name]));
   const rideIds = rows.map((r) => r.rideId).filter(Boolean) as string[];
   const rides = new Map(rideIds.length ? db.select().from(schema.rides).where(inArray(schema.rides.id, rideIds)).all().map((r) => [r.id, r]) : []);
-  const placeIds = [...rides.values()].flatMap((r) => [r.fromPlaceId, r.toPlaceId]);
-  const places = new Map(placeIds.length ? db.select().from(schema.places).where(inArray(schema.places.id, placeIds)).all().map((p) => [p.id, p.name]) : []);
+  const placeIds = [...[...rides.values()].flatMap((r) => [r.fromPlaceId, r.toPlaceId]), ...(rows.map((r) => r.placeId).filter(Boolean) as string[])];
+  const placeRows = new Map(placeIds.length ? db.select().from(schema.places).where(inArray(schema.places.id, placeIds)).all().map((p) => [p.id, p]) : []);
+  const places = new Map([...placeRows].map(([k, p]) => [k, p.name]));
   return rows.map((c) => {
-    const child = kids.get(c.childId) ?? '?';
+    const child = c.childId ? (kids.get(c.childId) ?? '?') : '';
+    const pl = c.placeId ? placeRows.get(c.placeId) : undefined;
     const ride = c.rideId ? rides.get(c.rideId) : undefined;
     const route = ride ? `${places.get(ride.fromPlaceId) ?? '?'} → ${places.get(ride.toPlaceId) ?? '?'}` : '';
     const day = formatDayRu(c.dateFrom);
-    const title = c.kind === 'cancel' ? `отменить поездку ${child}` : c.kind === 'time' ? `перенести время ${child}` : `${child} не будет`;
+    const title = c.kind === 'place' ? `сменить адрес «${pl?.name ?? '?'}»` : c.kind === 'cancel' ? `отменить поездку ${child}` : c.kind === 'time' ? `перенести время ${child}` : `${child} не будет`;
     const summary =
-      c.kind === 'absence'
+      c.kind === 'place'
+        ? `${pl?.address ?? '?'} → ${c.address}`
+        : c.kind === 'absence'
         ? c.dateFrom === c.dateTo
           ? `${day}`
           : `с ${formatDateRu(c.dateFrom)} по ${formatDateRu(c.dateTo)}`
@@ -155,13 +172,25 @@ function openChange(id: string): Change {
 /** Принять. Для переноса диспетчер может поставить своё время («могу в 16:40»). */
 export async function acceptChange(id: string, actorUserId: string, adjustedTime?: string) {
   const c = openChange(id);
-  const child = db.select().from(schema.children).where(eq(schema.children.id, c.childId)).get()?.firstName ?? '';
+  const child = c.childId ? (db.select().from(schema.children).where(eq(schema.children.id, c.childId)).get()?.firstName ?? '') : '';
   let body: string;
-  if (c.kind === 'absence') {
+  if (c.kind === 'place') {
+    const p = db.select().from(schema.places).where(eq(schema.places.id, c.placeId!)).get();
+    if (!p) throw new HttpError(409, 'Места уже нет — просьбу можно только отклонить');
+    db.update(schema.places).set({ address: c.address!, lat: c.lat!, lon: c.lon! }).where(eq(schema.places.id, p.id)).run();
+    // поездки с этим местом впереди — пересобрать: меняются порядок остановок и время в пути
+    const future = db
+      .select({ date: schema.rides.date })
+      .from(schema.rides)
+      .where(and(gte(schema.rides.date, localDate()), inArray(schema.rides.status, CHANGEABLE), or(eq(schema.rides.fromPlaceId, p.id), eq(schema.rides.toPlaceId, p.id))))
+      .all();
+    for (const d of new Set(future.map((r) => r.date))) planDay(d);
+    body = `«${p.name}»: новый адрес — ${c.address}.`;
+  } else if (c.kind === 'absence') {
     const rides = db
       .select()
       .from(schema.rides)
-      .where(and(eq(schema.rides.childId, c.childId), gte(schema.rides.date, c.dateFrom), lte(schema.rides.date, c.dateTo), inArray(schema.rides.status, CHANGEABLE)))
+      .where(and(eq(schema.rides.childId, c.childId!), gte(schema.rides.date, c.dateFrom), lte(schema.rides.date, c.dateTo), inArray(schema.rides.status, CHANGEABLE)))
       .all();
     await recordRideEvents({ rideIds: rides.map((r) => r.id), type: 'cancelled', source: 'dispatcher', actorUserId, reason: c.reason ?? 'Ребёнка не будет' });
     for (const d of new Set(rides.map((r) => r.date))) planDay(d);

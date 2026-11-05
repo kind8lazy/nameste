@@ -58,7 +58,7 @@ export function MyRequests() {
 
 export interface ChangeRow {
   id: string;
-  kind: 'cancel' | 'time' | 'absence';
+  kind: 'cancel' | 'time' | 'absence' | 'place';
   status: 'new' | 'accepted' | 'declined' | 'withdrawn';
   familyId: string;
   familyName: string;

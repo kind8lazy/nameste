@@ -1,7 +1,7 @@
 // Форма «Новое место»: название, адрес с подсказками во время ввода, как пройти.
 // Адрес ищем сами, пока человек печатает (как в Яндекс Картах); выбранная точка видна на маленькой карте —
 // по её координатам строится порядок остановок и время в пути. Форму используют клиент в «Семье» и диспетчер в карточке.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { MiniMap } from './MiniMap';
 
@@ -25,14 +25,54 @@ const DEBOUNCE_MS = 700;
 
 export function PlaceForm({ geocodePath, onSave, title = 'Новое место' }: { geocodePath: string; onSave: (p: PlacePayload) => Promise<boolean>; title?: string }) {
   const [name, setName] = useState('');
-  const [query, setQuery] = useState('');
-  const [found, setFound] = useState<FoundPlace[]>([]);
   const [picked, setPicked] = useState<FoundPlace | null>(null);
   const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+  const fid = useId();
+
+  const save = async () => {
+    if (!picked) return;
+    setSaving(true);
+    const ok = await onSave({ name: name.trim(), address: picked.address, lat: picked.lat, lon: picked.lon, entranceNote: note.trim() || undefined });
+    setSaving(false);
+    if (ok) {
+      setName('');
+      setPicked(null);
+      setNote('');
+      setResetKey((k) => k + 1);
+    }
+  };
+  const hint = name.trim().length < 2 ? 'Впишите название места' : !picked ? 'Выберите адрес из подсказок' : null;
+
+  return (
+    <div className="card" style={{ padding: 14, display: 'grid', gap: 12 }}>
+      <h3>{title}</h3>
+      <div className="field">
+        <label htmlFor={`${fid}-name`}>Название</label>
+        <input id={`${fid}-name`} className="input" placeholder="Школа, Теннис, Дом" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <AddressPicker key={resetKey} geocodePath={geocodePath} picked={picked} onPick={setPicked} mapName={name} />
+      <div className="field">
+        <label htmlFor={`${fid}-note`}>Как пройти (увидит водитель)</label>
+        <input id={`${fid}-note`} className="input" placeholder="Вход со двора, 2 этаж, кабинет 12" value={note} onChange={(e) => setNote(e.target.value)} />
+      </div>
+      {hint && <small className="page-sub">{hint}.</small>}
+      <button className="btn" disabled={!picked || name.trim().length < 2 || saving} onClick={() => void save()}>
+        {saving ? 'Сохраняю…' : 'Добавить место'}
+      </button>
+    </div>
+  );
+}
+
+/** Адрес с подсказками во время ввода и маленькой картой выбранной точки. */
+export function AddressPicker({ geocodePath, picked, onPick, mapName, label = 'Адрес' }: { geocodePath: string; picked: FoundPlace | null; onPick: (p: FoundPlace | null) => void; mapName?: string; label?: string }) {
+  const [query, setQuery] = useState('');
+  const [found, setFound] = useState<FoundPlace[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [saving, setSaving] = useState(false);
   const seq = useRef(0);
+  const qid = useId();
 
   // ищем, пока человек печатает: пауза 0,7 с, ответы на устаревший текст отбрасываем
   useEffect(() => {
@@ -60,56 +100,27 @@ export function PlaceForm({ geocodePath, onSave, title = 'Новое место'
     return () => window.clearTimeout(t);
   }, [query, picked, geocodePath]);
 
-  const save = async () => {
-    if (!picked) return;
-    setSaving(true);
-    const ok = await onSave({ name: name.trim(), address: picked.address, lat: picked.lat, lon: picked.lon, entranceNote: note.trim() || undefined });
-    setSaving(false);
-    if (ok) {
-      setName('');
-      setQuery('');
-      setFound([]);
-      setSearched(false);
-      setPicked(null);
-      setNote('');
-    }
-  };
-
   // дом не нашёлся на карте — точка встанет посередине улицы, водителю это нужно подсказать
-  const noHouse = !!picked && /\d/.test(query) && !/\d/.test(picked.address.split(',')[0] ?? '');
-  const hint = name.trim().length < 2 ? 'Впишите название места' : !picked ? 'Выберите адрес из подсказок' : null;
+  const noHouse = !!picked && /\d/.test(query) && !/\d/.test(picked.address.split(',').slice(0, 2).join(','));
 
   return (
-    <div className="card" style={{ padding: 14, display: 'grid', gap: 12 }}>
-      <h3>{title}</h3>
+    <>
       <div className="field">
-        <label htmlFor="np-name">Название</label>
-        <input id="np-name" className="input" placeholder="Школа, Теннис, Дом" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-
-      <div className="field">
-        <label htmlFor="np-q">Адрес</label>
+        <label htmlFor={qid}>{label}</label>
         {picked ? (
           <div className="place-picked">
             <span>
               <b>{picked.address.split(',').slice(0, 2).join(',')}</b>
               <small>{picked.address.split(',').slice(2, 4).join(',')}</small>
             </span>
-            <button
-              type="button"
-              className="btn small secondary"
-              onClick={() => {
-                setPicked(null);
-                setFound([]);
-              }}
-            >
+            <button type="button" className="btn small secondary" onClick={() => onPick(null)}>
               Изменить
             </button>
           </div>
         ) : (
           <>
             <input
-              id="np-q"
+              id={qid}
               className="input"
               placeholder="проспект Динамо 14"
               autoComplete="off"
@@ -119,7 +130,7 @@ export function PlaceForm({ geocodePath, onSave, title = 'Новое место'
                 // Enter выбирает первую подсказку
                 if (e.key === 'Enter' && found[0]) {
                   e.preventDefault();
-                  setPicked(found[0]);
+                  onPick(found[0]);
                 }
               }}
             />
@@ -128,7 +139,7 @@ export function PlaceForm({ geocodePath, onSave, title = 'Новое место'
               <ul className="list suggest" role="listbox" aria-label="Найденные адреса">
                 {found.map((f, i) => (
                   <li key={`${f.lat},${f.lon},${i}`}>
-                    <button type="button" role="option" aria-selected={false} onClick={() => setPicked(f)}>
+                    <button type="button" role="option" aria-selected={false} onClick={() => onPick(f)}>
                       <b>{f.address.split(',').slice(0, 2).join(',')}</b>
                       <small>{f.address.split(',').slice(2, 4).join(',')}</small>
                     </button>
@@ -140,18 +151,8 @@ export function PlaceForm({ geocodePath, onSave, title = 'Новое место'
           </>
         )}
       </div>
-
-      {picked && <MiniMap car={null} target={{ lat: picked.lat, lon: picked.lon, name: name.trim() || picked.address }} height={150} />}
+      {picked && <MiniMap car={null} target={{ lat: picked.lat, lon: picked.lon, name: mapName?.trim() || picked.address }} height={150} />}
       {noHouse && <div className="note">Карта нашла только улицу, без номера дома — точка встанет посередине улицы. Впишите дом и подъезд в «Как пройти», чтобы водитель не ошибся.</div>}
-
-      <div className="field">
-        <label htmlFor="np-note">Как пройти (увидит водитель)</label>
-        <input id="np-note" className="input" placeholder="Вход со двора, 2 этаж, кабинет 12" value={note} onChange={(e) => setNote(e.target.value)} />
-      </div>
-      {hint && <small className="page-sub">{hint}.</small>}
-      <button className="btn" disabled={!picked || name.trim().length < 2 || saving} onClick={() => void save()}>
-        {saving ? 'Сохраняю…' : 'Добавить место'}
-      </button>
-    </div>
+    </>
   );
 }
