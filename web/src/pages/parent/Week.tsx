@@ -130,9 +130,10 @@ export function Week() {
           })}
         </ul>
       )}
-      {canOrder && (
-        <Link to="/app/new" className="btn gold block">
-          + Новая поездка или маршрут
+      {/* в дне с поездками заказать ещё одну — тихой кнопкой под списком; в пустом дне кнопка в пустом состоянии */}
+      {canOrder && trips.length > 0 && selected >= today && (
+        <Link to={`/app/new?date=${selected}`} className="btn secondary block">
+          Заказать на этот день
         </Link>
       )}
       {canOrder && (

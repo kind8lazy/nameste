@@ -580,3 +580,12 @@ input[type='search'].input { min-height: 48px; }
 .code-hint { color: #84928f; font-size: 14px; }
 .code-alt { justify-self: center; min-height: 44px; display: inline-flex; align-items: center; color: #4f6168; font-size: 16px; }
 @media (max-width: 360px) { .otp { gap: 4px; } .otp-cell { height: 48px; font-size: 24px; } }
+
+/* ——— адрес с подсказками во время ввода ——— */
+.suggest { margin-top: 6px; }
+.suggest button { width: 100%; min-height: 52px; padding: 8px 14px; border: 0; background: var(--card); color: var(--ink); font: inherit; text-align: left; display: grid; gap: 1px; cursor: pointer; }
+.suggest button:hover, .suggest button:focus-visible { background: var(--bg); }
+.suggest b { font-weight: 600; font-size: 16px; }
+.suggest small, .place-picked small { color: var(--mute); font-size: 14px; }
+.place-picked { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border: 1.5px solid var(--gold); border-radius: 14px; background: var(--gold-bg); }
+.place-picked > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
