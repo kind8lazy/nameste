@@ -151,7 +151,7 @@ export function redeemCode(rawCode: string, ip: string, userAgent?: string): { t
       lockedUntil = Date.now() + 10 * 60_000;
       console.log('[Вход по коду] слишком много неудачных попыток — вход по коду закрыт на 10 минут');
     }
-    throw new HttpError(400, 'Код не подходит или устарел. Код для другого устройства получите в разделе «Семья», приглашение — у диспетчера.');
+    throw new HttpError(400, 'Код не подходит или устарел. Попросите новый у диспетчера.');
   }
   db.update(schema.loginCodes)
     .set({ uses: row.uses + 1 })

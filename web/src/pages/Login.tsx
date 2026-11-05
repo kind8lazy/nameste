@@ -25,7 +25,7 @@ function safeNext(next: string | null): string | null {
 
 export function Login() {
   const [params] = useSearchParams();
-  const { me, setMe } = useAuth();
+  const { me, setMe, loading } = useAuth();
   const nav = useNavigate();
   const [code, setCode] = useState(params.get('code') ?? '');
   const [error, setError] = useState<string | null>(LOGIN_ERRORS[params.get('error') ?? ''] ?? null);
@@ -54,24 +54,57 @@ export function Login() {
     if (me) nav(demoTarget.current || safeNext(params.get('next')) || homeFor(me), { replace: true });
   }, [me, nav, params]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const redeem = async (value: string) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const m = await api.post<Me>('/auth/redeem', { code });
+      const m = await api.post<Me>('/auth/redeem', { code: value });
       setMe(m);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не получилось войти');
+      setCode('');
     } finally {
       setBusy(false);
     }
   };
+  // ссылка-приглашение с кодом: входим сразу, без лишних нажатий
+  const autoTried = useRef(false);
+  // ждём, пока приложение узнает, вошёл ли человек, — иначе ответ «не вошёл» затрёт успешный вход
+  useEffect(() => {
+    const c = (params.get('code') ?? '').replace(/\D/g, '');
+    if (loading || me || autoTried.current || c.length < 6) return;
+    autoTried.current = true;
+    void redeem(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, me]);
 
   const standalone = isStandalone();
   // кодом входят те, у кого нет Яндекса или кто открыл ссылку-приглашение; остальным форма не мешает
-  const showCode = codeOpen || !yandex || !!params.get('code');
+  const codeMode = codeOpen || !!params.get('code');
   const yandexHref = `/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`;
+
+  if (codeMode)
+    return (
+      <CodeScreen
+        code={code}
+        setCode={(v) => {
+          setCode(v);
+          setError(null);
+          // набрали все 8 цифр — входим сами
+          if (v.length === 8) void redeem(v);
+        }}
+        busy={busy}
+        error={error}
+        onSubmit={() => void redeem(code)}
+        onBack={() => {
+          setCodeOpen(false);
+          setError(null);
+          if (params.get('code')) nav('/login', { replace: true });
+        }}
+        yandexHref={yandex && !(isIOS() && standalone) ? yandexHref : null}
+      />
+    );
 
   return (
     <div className="welcome">
@@ -102,29 +135,9 @@ export function Login() {
                 Войти через Яндекс <span aria-hidden>→</span>
               </a>
             )}
-            {showCode ? (
-              <form className="welcome-code" onSubmit={submit}>
-                <label htmlFor="code">Код из приглашения диспетчера</label>
-                <div>
-                  <input
-                    id="code"
-                    className="input code-input"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="00000000"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  />
-                  <button className="welcome-btn primary" disabled={busy || code.length < 6}>
-                    {busy ? 'Проверяю…' : 'Войти'}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <button type="button" className="welcome-btn ghost" onClick={() => setCodeOpen(true)}>
-                У меня есть код приглашения
-              </button>
-            )}
+            <button type="button" className={`welcome-btn ${yandex ? 'ghost' : 'primary'}`} onClick={() => setCodeOpen(true)}>
+              {yandex ? 'У меня есть код приглашения' : 'Войти по коду'}
+            </button>
             {yandex && <YandexCodeLogin label={isIOS() && standalone ? 'Войти через Яндекс' : 'Не получается? Войти по коду Яндекса'} onDone={(m) => setMe(m)} />}
             {error && <div className="note error">{error}</div>}
           </div>
@@ -282,6 +295,68 @@ function MockTile({ title, sub, icon, accent }: { title: string; sub: string; ic
         <b>{title}</b>
         <small>{sub}</small>
       </span>
+    </div>
+  );
+}
+
+/** Вход по коду: отдельный экран, 8 крупных ячеек, клавиатура цифр сразу, вход сам после 8-й цифры. */
+function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }: { code: string; setCode: (v: string) => void; busy: boolean; error: string | null; onSubmit: () => void; onBack: () => void; yandexHref: string | null }) {
+  const input = useRef<HTMLInputElement>(null);
+  // фокус сразу и снова после проверки — клавиатура не закрывается после ошибки
+  useEffect(() => {
+    if (!busy) input.current?.focus();
+  }, [busy]);
+  return (
+    <div className="code-screen">
+      <header className="code-top">
+        <button type="button" className="back-btn" aria-label="Назад" onClick={onBack}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+        <div className="wordmark" style={{ padding: 0, color: 'var(--navy)' }}>
+          НА<i />МЕСТЕ
+        </div>
+      </header>
+      <form
+        className="code-body"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <h1>Вход по коду</h1>
+        <p>Введите цифры из сообщения диспетчера.</p>
+        <label className="otp" onClick={() => input.current?.focus()}>
+          <input
+            ref={input}
+            id="code"
+            className="otp-input"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="one-time-code"
+            aria-label="Код из приглашения"
+            maxLength={8}
+            value={code}
+            readOnly={busy}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+          />
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i} className={`otp-cell${i === Math.min(code.length, 7) && !busy ? ' on' : ''}${code[i] ? ' filled' : ''}${error ? ' bad' : ''}`} aria-hidden>
+              {code[i] ?? ''}
+            </span>
+          ))}
+        </label>
+        {error ? <div className="note error">{error}</div> : <small className="code-hint">{busy ? 'Проверяю…' : 'Код действует 3 дня. После 8-й цифры войдём сами.'}</small>}
+        <button className="welcome-btn primary" disabled={busy || code.length < 6}>
+          {busy ? 'Проверяю…' : 'Войти'}
+        </button>
+        {yandexHref && (
+          <a className="code-alt" href={yandexHref}>
+            Нет кода? Войти через Яндекс
+          </a>
+        )}
+      </form>
     </div>
   );
 }
