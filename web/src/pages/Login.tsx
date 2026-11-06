@@ -250,13 +250,11 @@ function PhoneScene() {
           <StatusBar />
           <div className="mock-pad">
             <div className="mock-head">
-              <small>вторник, 3 ноября</small>
+              <b>Запланированные поездки</b>
               <i className="mock-plus">+</i>
             </div>
-            <div className="mock-hero">
-              <small>Сейчас</small>
-              <b>Маша в машине</b>
-              <span>будет на Теннисе в 14:43</span>
+            <div className="mock-line">
+              <i /> <b>Сегодня:</b> Маша в машине, будет в 14:43
             </div>
             <div className="mock-week">
               {['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d, i) => (
@@ -277,9 +275,8 @@ function PhoneScene() {
             </div>
           </div>
           <div className="mock-tabbar">
-            <span className="on">Поездки</span>
-            <span>Чат</span>
             <span>Профиль</span>
+            <span>Чат</span>
           </div>
         </div>
       </div>

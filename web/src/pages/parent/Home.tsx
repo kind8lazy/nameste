@@ -13,6 +13,7 @@ import { RideSheet } from './RideSheet';
 import { AbsenceSheet, Waiting, undoable } from './Requests';
 import { Today } from './Today';
 import { PushCard } from '../../components/PushCard';
+import { ChatBox } from '../../components/Chat';
 import { isIOS, isStandalone, pushSupported } from '../../lib/platform';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
 import type { Tone } from '@shared/domain';
@@ -97,10 +98,16 @@ export function Home() {
   const future = weeks.flatMap((w) => w.rides).filter((r) => r.status !== 'cancelled' && (r.date > today || (r.date === today && !['delivered', 'no_show'].includes(r.status))));
   const planned = future.length > 0;
   const live = day.rides.find((r) => ACTIVE.includes(r.status));
-  // «Дальше»: ближайшая поездка, которая ещё впереди (сегодняшние — только если время не прошло)
-  const upcoming = future.filter((r) => r.date > today || r.pickupTime >= now || ACTIVE.includes(r.status)).sort((x, y) => (x.date + x.pickupTime).localeCompare(y.date + y.pickupTime));
-  const nextRide = live ?? upcoming[0];
-  const nextTrip = nextRide ? groupTrips(weeks.flatMap((w) => w.rides).filter((r) => r.date === nextRide.date && r.status !== 'cancelled')).find((t) => t.rides.some((r) => r.id === nextRide.id)) : undefined;
+  const todayAll = day.rides.filter((r) => r.status !== 'cancelled');
+  const todayLeft = todayAll.filter((r) => !['delivered', 'no_show'].includes(r.status) && r.pickupTime >= now);
+  const todayText = live
+    ? `${live.child.firstName} — ${live.statusLabel.toLowerCase()}${live.status === 'on_board' && live.eta ? `, будет на «${live.to.name}» в ${live.eta}` : ''}`
+    : todayLeft.length
+      ? `в ${todayLeft[0].pickupTime} — ${todayLeft[0].child.firstName}, ${todayLeft[0].from.name} → ${todayLeft[0].to.name}`
+      : todayAll.length
+        ? 'поездки закончились'
+        : 'поездок нет';
+  const laterTrip = future.filter((r) => r.date > today).sort((x, y) => (x.date + x.pickupTime).localeCompare(y.date + y.pickupTime))[0];
   const dayWord = (d: string) => (d === today ? 'сегодня' : d === addDays(today, 1) ? 'завтра' : formatDayRu(d));
   const tomorrow = addDays(today, 1);
   const tomorrowPlanned = weeks.find((d) => d.date === tomorrow)?.rides.filter((r) => r.status === 'planned') ?? [];
@@ -131,31 +138,15 @@ export function Home() {
         </div>
       )}
 
-      {/* главное на экране — что дальше с ребёнком; во время поездки — сразу на карту */}
-      {live && nextTrip ? (
-        <Link to="/app/today" className="hero-next live">
-          <small>
-            <span className="dot" aria-hidden /> Сейчас
-          </small>
-          <b>
-            {nextTrip.rides.map((r) => r.child.firstName).join(', ')}: {live.statusLabel.toLowerCase()}
-          </b>
+      {/* «Сегодня» — строка состояния, а не кнопка (так просила Анастасия) */}
+      {planned && (
+        <p className="today-line" role="status">
+          {live && <span className="dot" aria-hidden />}
           <span>
-            {live.status === 'on_board' && live.eta ? `будет на «${live.to.name}» в ${live.eta}` : `${live.from.name} → ${live.to.name}`} · карта
+            <b>Сегодня:</b> {todayText}
+            {!live && !todayLeft.length && laterTrip && <span className="muted"> · дальше {dayWord(laterTrip.date)} в {laterTrip.pickupTime}</span>}
           </span>
-        </Link>
-      ) : (
-        nextTrip && (
-          <button className="hero-next" onClick={() => setSheet(nextTrip.rides)}>
-            <small>Дальше · {dayWord(nextTrip.date)}</small>
-            <b>
-              {nextTrip.rides.map((r) => r.child.firstName).join(', ')}, {nextTrip.pickupTime}
-            </b>
-            <span>
-              {nextTrip.fromName} → {[...new Set(nextTrip.rides.map((r) => r.to.name))].join(', ')}
-            </span>
-          </button>
-        )
+        </p>
       )}
 
       {planned && (
@@ -232,7 +223,7 @@ export function Home() {
               const tag: [Tone, string] | null = s.cancelled ? ['muted', 'отменена'] : s.live ? ['gold', 'сейчас'] : s.done ? ['ok', 'на месте'] : t.rides.some((r) => r.pending) ? ['plan', 'ждёт ответа'] : null;
               return (
                 <li key={t.key}>
-                  <button className={`row${s.cancelled ? ' cancelled' : ''}`} onClick={() => setSheet(t.rides)}>
+                  <button className={`row${s.cancelled ? ' cancelled' : ''}`} onClick={() => (s.live ? nav('/app/today') : setSheet(t.rides))}>
                     <time>{t.pickupTime}</time>
                     <span className="main">
                       <b>{t.rides.filter((r) => r.status !== 'cancelled' || s.cancelled).map((r) => r.child.firstName).join(', ')}</b>
@@ -277,6 +268,9 @@ export function Home() {
           </button>
         </div>
       )}
+
+      {/* чат с диспетчером — большим квадратом внизу, писать сразу */}
+      <ChatBox />
 
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       <AbsenceSheet open={absence} onClose={() => setAbsence(false)} onDone={undoable(toast, () => void load())} />

@@ -671,3 +671,17 @@ input[type='search'].input { min-height: 48px; }
 .ride-summary { margin: 0; font-size: 14px; line-height: 1.45; color: var(--mute); }
 .inline-link { border: 0; background: transparent; padding: 10px 2px; margin: -10px 0; font: inherit; font-weight: 600; color: var(--gold-ink); cursor: pointer; }
 .push-once { display: grid; gap: 0; } .push-once .text-link { min-height: 40px; }
+
+/* чат с диспетчером квадратом внизу главной родителя — писать сразу, без отдельного экрана */
+.chat.compact { height: auto; min-height: 0; grid-template-rows: auto auto auto auto; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 14px; }
+.chat.compact .chat-head { font-family: var(--f-display); font-size: 20px; }
+.chat.compact .chat-list { max-height: 240px; min-height: 64px; }
+.chat.compact .chat-form .btn { width: 48px; min-height: 48px; padding: 0; font-size: 20px; border-radius: 50%; }
+/* строка состояния «Сегодня» — информация, не кнопка */
+.today-line { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: 16px; line-height: 1.4; color: var(--ink); }
+.today-line b { font-weight: 600; }
+.today-line .muted { color: var(--mute); }
+.today-line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; align-self: center; animation: pulse 1.6s ease-in-out infinite; }
+.mock-head b { font-family: var(--f-display); font-size: 13px; }
+.mock-line { font-size: 10.5px; color: var(--w-ink); display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
+.mock-line i { width: 6px; height: 6px; border-radius: 50%; background: #2d7552; flex: none; }

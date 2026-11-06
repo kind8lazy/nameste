@@ -26,7 +26,7 @@ export function Badge({ n }: { n: number }) {
   return n > 0 ? <span className="badge" aria-label={`Непрочитанных: ${n}`}>{n > 99 ? '99+' : n}</span> : null;
 }
 
-export function ChatPane({ thread, title, onBack }: { thread: string; title: string; onBack?: () => void }) {
+export function ChatPane({ thread, title, onBack, compact = false }: { thread: string; title: string; onBack?: () => void; compact?: boolean }) {
   const [msgs, setMsgs] = useState<ChatMessage[] | null>(null);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export function ChatPane({ thread, title, onBack }: { thread: string; title: str
   };
 
   return (
-    <section className="chat">
+    <section className={`chat${compact ? ' compact' : ''}`}>
       <header className="chat-head">
         {onBack && (
           <button className="btn small secondary" onClick={onBack} aria-label="К списку чатов">
@@ -124,8 +124,8 @@ export function ChatPane({ thread, title, onBack }: { thread: string; title: str
             }
           }}
         />
-        <button className="btn" disabled={busy || !text.trim()}>
-          Отправить
+        <button className="btn" disabled={busy || !text.trim()} aria-label="Отправить">
+          {compact ? '↑' : 'Отправить'}
         </button>
       </form>
     </section>
@@ -183,4 +183,17 @@ export function ChatBrowser({ initial }: { initial?: string | null }) {
       <div className="chat-main">{current ? <ChatPane key={current.id} thread={current.id} title={current.title} onBack={() => setSelected(null)} /> : <div className="empty">Выберите чат</div>}</div>
     </div>
   );
+}
+
+/** Чат с диспетчером прямо на главной родителя: последние сообщения и поле ввода — без перехода на другой экран. */
+export function ChatBox() {
+  const [thread, setThread] = useState<ChatThread | null | undefined>(undefined);
+  useEffect(() => {
+    api
+      .get<ChatThread[]>('/chat/threads')
+      .then((t) => setThread(t.find((x) => !x.id.startsWith('team')) ?? null))
+      .catch(() => setThread(null));
+  }, []);
+  if (!thread) return null;
+  return <ChatPane thread={thread.id} title="Чат с диспетчером" compact />;
 }

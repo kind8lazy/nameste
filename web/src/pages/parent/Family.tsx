@@ -157,6 +157,7 @@ export function Family() {
     <main className="page">
       <div className="page-head">
         <Clock />
+        <BackButton to="/app" label="Поездки" />
         <h1 className="page-title">Профиль</h1>
         <span className="page-sub">{[me?.name, me?.families[0]?.name].filter(Boolean).join(' · ')}</span>
       </div>
