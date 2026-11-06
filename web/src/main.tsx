@@ -16,7 +16,6 @@ import { Login } from './pages/Login';
 import { ParentLayout } from './pages/parent/Layout';
 import { Today } from './pages/parent/Today';
 import { Home as ParentHome } from './pages/parent/Home';
-import { Week } from './pages/parent/Week';
 import { Family } from './pages/parent/Family';
 import { NewRide } from './pages/parent/NewRide';
 import { Shift } from './pages/driver/Shift';
@@ -37,6 +36,11 @@ function Home() {
   const { me, loading } = useAuth();
   if (loading) return <div className="empty">Загрузка…</div>;
   return <Navigate to={me ? homeFor(me) : '/login'} replace />;
+}
+
+/** /app/week?date=… → /app?date=… — неделя теперь на главной родителя. */
+function WeekRedirect() {
+  return <Navigate to={`/app${window.location.search}`} replace />;
 }
 
 void registerServiceWorker();
@@ -60,7 +64,8 @@ createRoot(document.getElementById('root')!).render(
           >
             <Route index element={<ParentHome />} />
             <Route path="today" element={<Today />} />
-            <Route path="week" element={<Week />} />
+            {/* старые ссылки из уведомлений: «Неделя» теперь на главной */}
+            <Route path="week" element={<WeekRedirect />} />
             <Route path="family" element={<Family />} />
             <Route path="new" element={<NewRide />} />
             <Route path="chat" element={<Chat />} />

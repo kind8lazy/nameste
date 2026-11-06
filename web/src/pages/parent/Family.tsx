@@ -1,4 +1,4 @@
-// Семья: дети, уведомления, вход на другом устройстве, выход.
+// Профиль семьи: дети, уведомления, вход на другом устройстве, выход.
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useSearchParams } from 'react-router-dom';
@@ -54,7 +54,7 @@ export function Family() {
     <main className="page">
       <div className="page-head">
         <Clock />
-        <h1 className="page-title">Семья</h1>
+        <h1 className="page-title">Профиль</h1>
         <span className="page-sub">{me?.families[0]?.name}</span>
       </div>
       <div className="section-label">Дети</div>

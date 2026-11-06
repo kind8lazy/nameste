@@ -110,7 +110,9 @@ export function changeViews(rows: Change[]) {
     const title = c.kind === 'place' ? `сменить адрес «${pl?.name ?? '?'}»` : c.kind === 'cancel' ? `отменить поездку ${child}` : c.kind === 'time' ? `перенести время ${child}` : `${child} не будет`;
     const summary =
       c.kind === 'place'
-        ? `${pl?.address ?? '?'} → ${c.address}`
+        ? c.status === 'new'
+          ? `${pl?.address ?? '?'} → ${c.address}`
+          : `новый адрес: ${c.address}`
         : c.kind === 'absence'
         ? c.dateFrom === c.dateTo
           ? `${day}`
@@ -213,7 +215,7 @@ export async function acceptChange(id: string, actorUserId: string, adjustedTime
     .set({ status: 'accepted', decidedAt: new Date(), answer: adjustedTime && adjustedTime !== c.time ? `Время изменено на ${adjustedTime}` : null })
     .where(eq(schema.changeRequests.id, id))
     .run();
-  await notifyFamily(c.familyId, 'request', { title: 'Диспетчер подтвердил', body, priority: 'important' }, { url: '/app/week' });
+  await notifyFamily(c.familyId, 'request', { title: 'Диспетчер подтвердил', body, priority: 'important' }, { url: '/app' });
   publish(channel.family(c.familyId), 'rides', { change: id });
   publish(channel.dispatch, 'rides', { change: id });
   return { ok: true };
@@ -222,7 +224,7 @@ export async function acceptChange(id: string, actorUserId: string, adjustedTime
 export async function declineChange(id: string, answer: string) {
   const c = openChange(id);
   db.update(schema.changeRequests).set({ status: 'declined', answer, decidedAt: new Date() }).where(eq(schema.changeRequests.id, id)).run();
-  await notifyFamily(c.familyId, 'request', { title: 'Диспетчер не смог изменить', body: `${answer} Поездка остаётся по плану.`, priority: 'important' }, { url: '/app/week' });
+  await notifyFamily(c.familyId, 'request', { title: 'Диспетчер не смог изменить', body: `${answer} Поездка остаётся по плану.`, priority: 'important' }, { url: '/app' });
   publish(channel.family(c.familyId), 'rides', { change: id });
   publish(channel.dispatch, 'rides', { change: id });
   return { ok: true };

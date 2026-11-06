@@ -54,7 +54,7 @@ export async function sendReminders(date: string) {
         fromPlace: g[0].from.name,
         toPlace: [...new Set(g.map((v) => v.to.name))].join(', '),
       }));
-    await notifyFamily(familyId, 'reminder', reminderMessage(lines), { tag: `reminder-${date}`, url: `/app/week?date=${date}` });
+    await notifyFamily(familyId, 'reminder', reminderMessage(lines), { tag: `reminder-${date}`, url: `/app?date=${date}` });
   }
 }
 

@@ -597,3 +597,33 @@ input[type='search'].input { min-height: 48px; }
 .place-row > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .place-pending { justify-self: start; margin-top: 4px; font-size: 12px; font-weight: 600; border-radius: 8px; padding: 3px 8px; background: var(--warn-bg); color: var(--warn); }
 .place-picked > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
+
+/* ——— главная родителя: «Запланированные поездки» ——— */
+.trips-head { flex-wrap: wrap; align-items: center; }
+.trips-head .page-clock { flex-basis: 100%; }
+.trips-head .page-title { flex: 1; min-width: 0; font-size: 24px; line-height: 1.15; }
+.plus-btn { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; background: var(--navy); color: var(--cream); display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / 0.12); }
+.plus-btn:active { transform: scale(0.96); }
+.status-line { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--mute); }
+.status-line.live { color: var(--ink); text-decoration: none; font-weight: 600; padding: 10px 14px; border-radius: 14px; background: var(--gold-bg); min-height: 44px; }
+.status-line.live > span:not(.dot) { flex: 1; min-width: 0; }
+.status-line.live b { color: var(--gold-ink); font-size: 14px; }
+.status-line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.week-card { padding: 12px 8px 8px; display: grid; gap: 8px; }
+.week-month { font-size: 14px; font-weight: 600; padding: 0 8px; }
+.week-pager { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.week-pager::-webkit-scrollbar { display: none; }
+.week-pager > .week-strip { flex: 0 0 100%; scroll-snap-align: start; }
+.week-strip.plain button { border-color: transparent; background: transparent; border-radius: 999px; min-height: 56px; }
+.week-strip.plain button.past:not(.on) b { color: var(--mute); }
+.week-strip.plain button em { font-size: 14px; line-height: 10px; }
+.week-strip.plain button.on em { color: var(--gold); }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chips button { flex: none; min-height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+.chips button.on { background: var(--navy); border-color: var(--navy); color: var(--cream); font-weight: 600; }
+.big-action { display: grid; gap: 2px; min-height: 60px; text-align: center; }
+.big-action small { font-weight: 400; font-size: 12px; color: var(--mute); }
+.week-strip.plain button.on { background: var(--navy); color: #b9c6c6; }
+.week-strip.plain button.on b { color: var(--cream); }
+.week-strip.plain button.today:not(.on) { border-color: var(--gold); }

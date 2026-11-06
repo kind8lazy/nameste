@@ -80,7 +80,7 @@ export function NewRide() {
         escort,
         comment: comment || null,
       });
-      nav('/app/week?sent=1', { replace: true });
+      nav('/app?sent=1', { replace: true });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не получилось отправить');
     } finally {

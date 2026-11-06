@@ -109,16 +109,6 @@ export function Today() {
       {!lite && day.rides.length > 0 && <ShareTracking />}
       <PushCard compact />
       {!lite && <DemoCard />}
-      <div className="btn-row">
-        {canOrder && (
-          <Link to="/app/new" className="btn gold">
-            + Новая поездка
-          </Link>
-        )}
-        <Link to="/app/week" className="btn secondary">
-          Вся неделя
-        </Link>
-      </div>
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       {toast.node}
     </main>
