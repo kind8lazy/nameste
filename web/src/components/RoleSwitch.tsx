@@ -1,74 +1,42 @@
-// Плашка роли для тех, у кого несколько ролей (диспетчер): всегда видно, кто вы сейчас и где,
-// и можно перейти в другую роль. У каждой роли свой цвет — плашка и рамка экрана красятся в него.
-import { useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { useAuth, dispatcherHome } from '../lib/auth';
+// «Режим» — для тех, у кого несколько ролей (диспетчер, который ещё и водитель и смотрит как родитель).
+// Полосы ролей над экраном нет: роль видна по самому экрану, а переключатель живёт в «Профиле»,
+// в «Ещё» у диспетчера и на главной водителя. Текущий режим отмечен.
+import { Link } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
 
-type RoleKey = 'dispatcher' | 'driver' | 'parent';
+export type RoleKey = 'dispatcher' | 'driver' | 'parent';
 
-const ROLE_NAME: Record<RoleKey, string> = { dispatcher: 'Диспетчер', driver: 'Водитель', parent: 'Родитель' };
-
-/** Раздел по адресу: от более точного к общему. */
-const SECTIONS: [RegExp, RoleKey, string][] = [
-  [/^\/admin\/clients\/[^/]+/, 'dispatcher', 'Карточка семьи'],
-  [/^\/admin\/clients/, 'dispatcher', 'Семьи'],
-  [/^\/admin\/access/, 'dispatcher', 'Водители и доступ'],
-  [/^\/admin\/chat/, 'dispatcher', 'Сообщения'],
-  [/^\/admin\/m$/, 'dispatcher', 'Главная'],
-  [/^\/admin\/inbox/, 'dispatcher', 'Входящие'],
-  [/^\/admin\/settings/, 'dispatcher', 'Настройки'],
-  [/^\/admin/, 'dispatcher', 'Сегодня'],
-  [/^\/driver\/chat/, 'driver', 'Сообщения'],
-  [/^\/driver\/shift/, 'driver', 'Смена'],
-  [/^\/driver/, 'driver', 'Главная'],
-  [/^\/app\/week/, 'parent', 'Неделя'],
-  [/^\/app\/family/, 'parent', 'Семья'],
-  [/^\/app\/new/, 'parent', 'Новая поездка'],
-  [/^\/app\/chat/, 'parent', 'Чат'],
-  [/^\/app\/today/, 'parent', 'Сегодня'],
-  [/^\/app/, 'parent', 'Главная'],
+const ROWS: { role: RoleKey; to: string; label: string }[] = [
+  { role: 'dispatcher', to: '/admin/inbox', label: 'Диспетчерская' },
+  { role: 'driver', to: '/driver', label: 'Моя смена' },
+  { role: 'parent', to: '/app', label: 'Как родитель' },
 ];
 
-export function roleOfPath(path: string): { role: RoleKey; section: string } | null {
-  const hit = SECTIONS.find(([re]) => re.test(path));
-  return hit ? { role: hit[1], section: hit[2] } : null;
-}
-
-export function RoleBar() {
+/** Показываем только тем, у кого больше одной роли. */
+export function RoleRows({ current }: { current: RoleKey }) {
   const { me } = useAuth();
-  const { pathname } = useLocation();
-  const where = roleOfPath(pathname);
-  const multi = !!me?.roles.includes('dispatcher');
-
-  // цвет роли на весь экран: рамка и плашка (см. html.role-* в styles.css)
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('role-dispatcher', 'role-driver', 'role-parent');
-    if (multi && where) root.classList.add(`role-${where.role}`);
-    return () => root.classList.remove('role-dispatcher', 'role-driver', 'role-parent');
-  }, [multi, where?.role]);
-
-  if (!multi || !where) return null;
+  if (!me?.roles.includes('dispatcher')) return null;
+  const rows = ROWS.filter((r) => r.role !== 'driver' || me.roles.includes('driver'));
   return (
-    <header className={`role-bar role-bar-${where.role}`}>
-      <div className="role-bar-now">
-        <span>Вы сейчас</span>
-        <b>{ROLE_NAME[where.role]}</b>
-        <span className="role-bar-section">· {where.section}</span>
-      </div>
-      <nav className="role-bar-tabs" aria-label="Сменить роль">
-        <NavLink to={dispatcherHome()} className={where.role === 'dispatcher' ? 'on' : ''}>
-          Диспетчер
-        </NavLink>
-        {me!.roles.includes('driver') && (
-          <NavLink to="/driver" className={where.role === 'driver' ? 'on' : ''}>
-            Водитель
-          </NavLink>
-        )}
-        <NavLink to="/app" end className={where.role === 'parent' ? 'on' : ''}>
-          Родитель
-        </NavLink>
-      </nav>
-    </header>
+    <>
+      <div className="section-label">Режим</div>
+      <ul className="list">
+        {rows.map((r) => (
+          <li key={r.role}>
+            {r.role === current ? (
+              <span className="list-row current" aria-current="page">
+                <b>{r.label}</b>
+                <small>сейчас</small>
+              </span>
+            ) : (
+              <Link to={r.to} className="list-row">
+                <b>{r.label}</b>
+                <small>›</small>
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

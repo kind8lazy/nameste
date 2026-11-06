@@ -141,7 +141,7 @@ export function Login() {
             {yandex && <YandexCodeLogin label={isIOS() && standalone ? 'Войти через Яндекс' : 'Не получается? Войти по коду Яндекса'} onDone={(m) => setMe(m)} />}
             {error && <div className="note error">{error}</div>}
           </div>
-          <small className="welcome-note">Код приглашения присылает диспетчер. Работает в браузере, можно добавить на экран телефона.</small>
+          <small className="welcome-note">Код присылает диспетчер.</small>
         </div>
 
         <PhoneScene />
@@ -359,7 +359,7 @@ function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }
             </span>
           ))}
         </label>
-        {error ? <div className="note error">{error}</div> : <small className="code-hint">{busy ? 'Проверяю…' : 'Код действует 3 дня. После 8-й цифры войдём сами.'}</small>}
+        {error ? <div className="note error">{error}</div> : <small className="code-hint">{busy ? 'Проверяю…' : 'Войдём сами после 8-й цифры'}</small>}
         {!code && canPaste && (
           <button
             type="button"

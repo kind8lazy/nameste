@@ -315,27 +315,6 @@ input, select, textarea, button { font-size: 16px; }
 .absence-grid button small { font-size: 11px; opacity: 0.7; }
 .absence-grid button.on { background: var(--navy, #1d2b3a); color: #fff; border-color: transparent; }
 
-/* ——— роль на весь экран: плашка вверху и рамка своего цвета (у кого несколько ролей) ——— */
-html.role-dispatcher { --role: #1b3440; --role-ink: #f4f0e6; --role-accent: #b8964f; }
-html.role-driver { --role: #c7702c; --role-ink: #fff; --role-accent: #0f1e24; }
-html.role-parent { --role: #b8964f; --role-ink: #241a07; --role-accent: #fff; }
-html.role-dispatcher body::after, html.role-driver body::after, html.role-parent body::after {
-  content: ''; position: fixed; inset: 0; border: 3px solid var(--role); pointer-events: none; z-index: 60;
-}
-.role-bar {
-  position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-  padding: calc(var(--safe-top, 0px) + 8px) 14px 8px; background: var(--role); color: var(--role-ink);
-}
-.role-bar-now { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: 14px; }
-.role-bar-now span { opacity: 0.8; }
-.role-bar-now b { font-family: var(--f-display); font-size: 16px; }
-.role-bar-section { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.role-bar-tabs { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: rgba(0, 0, 0, 0.18); }
-.role-bar-tabs a { padding: 5px 10px; border-radius: 8px; font-size: 14px; font-weight: 500; text-decoration: none; color: inherit; opacity: 0.85; }
-.role-bar-tabs a.on { background: var(--role-ink); color: var(--role); opacity: 1; font-weight: 600; }
-@media (max-width: 420px) {
-  .role-bar-tabs { width: 100%; }
-  .role-bar-tabs a { flex: 1; text-align: center; }
 }
 
 /* ——— главная родителя: разделы плитками с живой подписью ——— */
@@ -509,7 +488,6 @@ html.role-dispatcher body::after, html.role-driver body::after, html.role-parent
 
 /* ——— интерфейс по чек-листу: цели касания от 44 px, «назад», ручка панели, заглушки загрузки ——— */
 .tabbar a { min-height: 48px; display: grid; align-content: center; }
-.role-bar-tabs a { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .back-btn {
   width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; align-self: center;
   background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; margin-right: -2px;
@@ -553,12 +531,6 @@ input[type='search'].input { min-height: 48px; }
 .toast-action { min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; flex: none; }
 .empty-action { display: grid; gap: 14px; justify-items: center; }
 
-/* плашка роли на узком экране — одна строка: только переключатель, цвет и так говорит, где вы */
-@media (max-width: 480px) {
-  .role-bar { padding: calc(var(--safe-top, 0px) + 6px) 10px 6px; }
-  .role-bar-now { display: none; }
-  .role-bar-tabs a { min-height: 38px; }
-}
 .tabbar a { position: relative; }
 .tabbar a .badge { position: absolute; top: 2px; left: calc(50% + 8px); }
 @media (max-width: 480px) { .hide-phone { display: none !important; } }
@@ -684,3 +656,18 @@ input[type='search'].input { min-height: 48px; }
 .waiting li.declined b { color: var(--alert); }
 .waiting button { flex: none; border: 0; background: transparent; padding: 10px 4px; margin: -10px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--gold-ink); cursor: pointer; }
 .trips-head .page-title.big { font-size: 28px; }
+
+/* строка списка-ссылки: «Места 5 ›», «Режим» */
+.list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px; color: var(--ink); text-decoration: none; font: inherit; background: transparent; border: 0; width: 100%; box-sizing: border-box; cursor: pointer; text-align: left; }
+.list-row b { font-weight: 600; font-size: 16px; }
+.list-row small { color: var(--mute); font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.list-row.current { cursor: default; }
+.list-row.current small { color: var(--ok); font-weight: 600; }
+.inbox-msgs { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 16px; border-radius: 16px; background: var(--gold-bg); color: var(--gold-ink); text-decoration: none; font-size: 16px; }
+.inbox-history { display: grid; gap: 10px; }
+.inbox-history summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--mute); }
+.inbox-history[open] summary { margin-bottom: 4px; }
+.text-link.gold { color: var(--gold-ink); align-self: flex-start; padding: 0 4px; }
+.ride-summary { margin: 0; font-size: 14px; line-height: 1.45; color: var(--mute); }
+.inline-link { border: 0; background: transparent; padding: 10px 2px; margin: -10px 0; font: inherit; font-weight: 600; color: var(--gold-ink); cursor: pointer; }
+.push-once { display: grid; gap: 0; } .push-once .text-link { min-height: 40px; }

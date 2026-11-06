@@ -1,6 +1,8 @@
-// Меню диспетчера — одно на всех экранах: пять разделов на каждый день и настройки внизу.
+// Меню диспетчера. На компьютере — боковое: разделы на каждый день, внизу настройки и другие режимы.
+// На телефоне — нижнее: «Входящие · Сегодня · Семьи · Ещё»; главная — очередь решений.
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../lib/auth';
 import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { Badge, useUnread } from '../../components/Chat';
@@ -20,6 +22,7 @@ export function useInboxCount(): number {
 }
 
 export function DeskNav() {
+  const { me } = useAuth();
   const unread = useUnread();
   const inbox = useInboxCount();
   return (
@@ -46,6 +49,10 @@ export function DeskNav() {
       </NavLink>
       <div className="desk-nav-bottom">
         <NavLink to="/admin/settings">Настройки</NavLink>
+        {me?.roles.includes('driver') && <NavLink to="/driver">Моя смена</NavLink>}
+        <NavLink to="/app" end>
+          Как родитель
+        </NavLink>
       </div>
     </nav>
     </>
@@ -59,20 +66,17 @@ export function DeskTabbar({ inbox, unread }: { inbox?: number; unread?: number 
   const nInbox = inbox ?? ownInbox;
   const nUnread = unread ?? ownUnread;
   return (
-    <nav className="tabbar desk-tabbar" style={{ ['--tabs' as string]: 5 }} aria-label="Разделы">
-      <NavLink to="/admin/m" end>
-        Главная
-      </NavLink>
-      <NavLink to="/admin" end>
-        Сегодня
-      </NavLink>
+    <nav className="tabbar desk-tabbar" style={{ ['--tabs' as string]: 4 }} aria-label="Разделы">
       <NavLink to="/admin/inbox">
         Входящие
         <Badge n={nInbox} />
       </NavLink>
+      <NavLink to="/admin" end>
+        Сегодня
+      </NavLink>
       <NavLink to="/admin/clients">Семьи</NavLink>
-      <NavLink to="/admin/chat">
-        Чат
+      <NavLink to="/admin/m">
+        Ещё
         <Badge n={nUnread} />
       </NavLink>
     </nav>

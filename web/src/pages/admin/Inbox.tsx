@@ -6,6 +6,9 @@ import { useAuth } from '../../lib/auth';
 import { useToast } from '../../components/ui';
 import { Clock } from '../../components/Clock';
 import { DeskNav } from './DeskNav';
+import { Link } from 'react-router-dom';
+import { useUnread } from '../../components/Chat';
+import { plural } from '@shared/ru';
 import { REQUEST_STATUS, CHANGE_STATUS, type RequestRow, type ChangeRow } from '../parent/Requests';
 
 export function useInbox() {
@@ -48,6 +51,7 @@ export function PendingList({ onDone }: { onDone: (msg: string) => void }) {
 export function Inbox() {
   const toast = useToast();
   const { requests, changes, load } = useInbox();
+  const unread = useUnread();
   const done = (m: string) => {
     toast.show(m);
     void load();
@@ -67,9 +71,17 @@ export function Inbox() {
         <div className="page-head">
           <Clock />
           <h1 className="page-title">Входящие</h1>
+          <span className="page-sub">{newChanges.length + newRequests.length ? `${newChanges.length + newRequests.length} ${plural(newChanges.length + newRequests.length, ['ждёт', 'ждут', 'ждут'])} ответа` : 'ничего не ждёт'}</span>
         </div>
-        <h3>Ждут решения</h3>
-        {!newChanges.length && !newRequests.length && <div className="card empty">Всё решено — новых просьб и заявок нет</div>}
+        {unread > 0 && (
+          <Link to="/admin/chat" className="inbox-msgs">
+            <b>
+              {unread} {plural(unread, ['новое сообщение', 'новых сообщения', 'новых сообщений'])}
+            </b>
+            <span>›</span>
+          </Link>
+        )}
+        {!newChanges.length && !newRequests.length && <div className="card empty">Всё решено. Новое появится здесь.</div>}
         {newChanges.map((c) => (
           <ChangeCard key={c.id} c={c} onDone={done} />
         ))}
@@ -77,10 +89,10 @@ export function Inbox() {
           <RequestCard key={r.id} r={r} onDone={done} />
         ))}
         {history.length > 0 && (
-          <>
-            <h3 style={{ marginTop: 12 }}>Решённые</h3>
+          <details className="inbox-history">
+            <summary>Решённые · {history.length}</summary>
             {history.map((h) => h.node)}
-          </>
+          </details>
         )}
       </main>
       {toast.node}

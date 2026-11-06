@@ -8,7 +8,6 @@ import { groupTrips, tripState, currentTarget, type Trip } from '../../lib/trips
 import { phoneHref } from '../../lib/platform';
 import { Avatar, Steps, Tag, useToast, Skeleton, BackButton, EmptyState } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
-import { PushCard } from '../../components/PushCard';
 import { DemoCard } from '../../components/DemoCard';
 import { LiveFreshness } from '../../components/LiveFreshness';
 import { ShareTracking } from '../../components/ShareTracking';
@@ -107,7 +106,6 @@ export function Today() {
         </>
       )}
       {!lite && day.rides.length > 0 && <ShareTracking />}
-      <PushCard compact />
       {!lite && <DemoCard />}
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       {toast.node}

@@ -52,5 +52,5 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
 
 /** Диспетчерская: на компьютере — большая доска, на телефоне — главная с плитками. */
 export function dispatcherHome(): string {
-  return window.matchMedia('(min-width: 900px)').matches ? '/admin' : '/admin/m';
+  return window.matchMedia('(min-width: 900px)').matches ? '/admin' : '/admin/inbox';
 }

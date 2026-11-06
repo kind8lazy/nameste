@@ -10,6 +10,7 @@ import { addDays, formatDayRu, localDate, localTime } from '@shared/time';
 import { plural } from '@shared/ru';
 import { Clock } from '../../components/Clock';
 import { Skeleton } from '../../components/ui';
+import { RoleRows } from '../../components/RoleSwitch';
 
 const POINTS: [string, string, string] = ['точка', 'точки', 'точек'];
 
@@ -68,6 +69,7 @@ export function DriverHome() {
           <Tile to={nextDay ? `/driver/shift?date=${nextDay.date}` : '/driver/shift'} title="Неделя" sub={weekText} icon={<IconCalendar />} />
           <Tile to="/driver/chat" title="Сообщения" sub={unread ? `${unread} ${plural(unread, ['новое', 'новых', 'новых'])}` : 'Диспетчер и семьи'} accent={unread > 0} icon={<IconChat />} />
         </nav>
+        <RoleRows current="driver" />
         <button
           className="text-btn"
           onClick={async () => {

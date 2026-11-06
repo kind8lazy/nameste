@@ -172,7 +172,7 @@ export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose
           })}
         </div>
       </div>
-      {from && <div className="note plain">{from === end ? formatDateRu(from) : `С ${formatDateRu(from)} по ${formatDateRu(end!)}`}: все поездки отменятся, когда диспетчер подтвердит.</div>}
+      {from && <div className="note plain">{from === end ? formatDateRu(from) : `С ${formatDateRu(from)} по ${formatDateRu(end!)}`}: поездки отменятся после ответа диспетчера.</div>}
       {error && <div className="note error">{error}</div>}
       <button className="btn block" disabled={busy || !from || !childId} onClick={() => void send()}>
         Отправить диспетчеру

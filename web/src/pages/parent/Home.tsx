@@ -12,6 +12,8 @@ import { Clock } from '../../components/Clock';
 import { RideSheet } from './RideSheet';
 import { AbsenceSheet, Waiting, undoable } from './Requests';
 import { Today } from './Today';
+import { PushCard } from '../../components/PushCard';
+import { isIOS, isStandalone, pushSupported } from '../../lib/platform';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
 import type { Tone } from '@shared/domain';
 import { addDays, formatDayRu, localDate, localTime, WEEKDAYS_SHORT, weekStart } from '@shared/time';
@@ -39,6 +41,14 @@ export function Home() {
   const [sheet, setSheet] = useState<RideView[] | null>(null);
   const [absence, setAbsence] = useState(false);
   const pager = useRef<HTMLDivElement>(null);
+  // уведомления спрашиваем один раз: «Не сейчас» прячет вопрос на этом телефоне (включить можно в «Профиле»)
+  const [pushLater, setPushLater] = useState(() => {
+    try {
+      return localStorage.getItem('push-later') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const load = useCallback(async () => {
     const [d, ...w] = await Promise.all([api.get<ParentDay>('/parent/day'), ...Array.from({ length: WEEKS }, (_, i) => api.get<WeekDay[]>(`/parent/week?date=${addDays(monday0, i * 7)}`))]);
@@ -101,7 +111,7 @@ export function Home() {
       <div className="page-head trips-head">
         <Clock />
         <h1 className={`page-title${planned ? '' : ' big'}`}>{planned ? 'Запланированные поездки' : 'Запланируйте поездки своего ребёнка'}</h1>
-        {canOrder && planned && (
+        {canOrder && (
           <button className="plus-btn" aria-label="Новая поездка" title="Новая поездка" onClick={() => nav(`/app/new${selected > today ? `?date=${selected}` : ''}`)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
               <path d="M12 5v14M5 12h14" />
@@ -208,7 +218,7 @@ export function Home() {
         </div>
       )}
 
-      {params.get('sent') && <div className="note">Заявка отправлена. Диспетчер ответит, уведомление придёт на телефон.</div>}
+      {params.get('sent') && <div className="note">Заявка отправлена. Диспетчер ответит уведомлением.</div>}
 
       {planned &&
         (trips.length === 0 ? (
@@ -241,10 +251,31 @@ export function Home() {
 
       <Waiting />
 
+      {/* одна из двух главных кнопок родителя (вторая — «+»): заметная, как просила Анастасия */}
       {canOrder && planned && (
-        <button className="text-link underline" onClick={() => setAbsence(true)}>
+        <button className="btn secondary block" onClick={() => setAbsence(true)}>
           Ребёнка не будет
         </button>
+      )}
+
+      {planned && !pushLater && !me?.pushEnabled && ((isIOS() && !isStandalone()) || pushSupported()) && (
+        <div className="push-once">
+          <PushCard compact />
+          <button
+            className="text-link"
+            style={{ color: 'var(--mute)', fontWeight: 400 }}
+            onClick={() => {
+              setPushLater(true);
+              try {
+                localStorage.setItem('push-later', '1');
+              } catch {
+                /* приватный режим — спросим снова в следующий раз */
+              }
+            }}
+          >
+            Не сейчас
+          </button>
+        </div>
       )}
 
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
