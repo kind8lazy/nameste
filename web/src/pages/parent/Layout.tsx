@@ -4,8 +4,8 @@ import { Badge, useUnread } from '../../components/Chat';
 /** Нижняя панель родителя: профиль и чат. Главная — «Запланированные поездки». */
 export function ParentLayout() {
   const unread = useUnread();
-  // на внутренних экранах («Сегодня» с картой, «Новая поездка») вместо меню — кнопка «назад»
-  const inner = /^\/app\/(today|new)/.test(useLocation().pathname);
+  // на внутренних экранах («Сегодня» с картой, «Новая поездка», чат) вместо меню — кнопка «назад»
+  const inner = /^\/app\/(today|new|chat)/.test(useLocation().pathname);
   return (
     <div className={`app${inner ? ' no-tabbar' : ''}`}>
       <Outlet />

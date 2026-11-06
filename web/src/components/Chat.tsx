@@ -1,5 +1,6 @@
 // Сообщения внутри приложения: переписка и список чатов. Работает у родителя, водителя и диспетчера.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { useStream } from '../lib/stream';
 import type { ChatMessage, ChatThread } from '@shared/api';
@@ -78,13 +79,20 @@ export function ChatPane({ thread, title, onBack, compact = false }: { thread: s
           </button>
         )}
         <b>{title}</b>
+        {compact && (
+          <Link to="/app/chat" className="chat-all">
+            все ›
+          </Link>
+        )}
       </header>
       <div className="chat-list" ref={list} aria-live="polite">
         {msgs === null && !error && <div className="empty">Загрузка…</div>}
         {msgs?.length === 0 && <div className="empty">Сообщений пока нет. Напишите первым.</div>}
-        {msgs?.map((m, i) => {
-          const newDay = i === 0 || dayLabel(msgs[i - 1].createdAt) !== dayLabel(m.createdAt);
-          const showName = !m.mine && (i === 0 || msgs[i - 1].authorId !== m.authorId || newDay);
+        {(compact ? msgs?.slice(-2) : msgs)?.map((m, i, shown) => {
+          const prev = shown[i - 1];
+          // в коротком чате на главной даты не показываем — только сами сообщения
+          const newDay = !compact && (!prev || dayLabel(prev.createdAt) !== dayLabel(m.createdAt));
+          const showName = !m.mine && (!prev || prev.authorId !== m.authorId || newDay);
           return (
             <div key={m.id}>
               {newDay && <div className="chat-day">{dayLabel(m.createdAt)}</div>}
@@ -124,8 +132,10 @@ export function ChatPane({ thread, title, onBack, compact = false }: { thread: s
             }
           }}
         />
-        <button className="btn" disabled={busy || !text.trim()} aria-label="Отправить">
-          {compact ? '↑' : 'Отправить'}
+        <button className="chat-send" disabled={busy || !text.trim()} aria-label="Отправить" title="Отправить">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 19V5M6 11l6-6 6 6" />
+          </svg>
         </button>
       </form>
     </section>

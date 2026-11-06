@@ -281,10 +281,11 @@ input, select, textarea, button { font-size: 16px; }
 .chat-list { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; }
 .chat-day { text-align: center; font-size: 12px; color: var(--mute); margin: 8px 0 4px; }
 .chat-name { font-size: 12px; color: var(--mute); margin: 6px 6px 2px; }
-.bubble { max-width: 82%; width: fit-content; background: var(--card); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 8px 12px; display: grid; gap: 2px; }
-.bubble.mine { margin-left: auto; background: var(--navy); color: var(--cream); border-color: var(--navy); border-radius: 16px 16px 4px 16px; }
+.bubble { max-width: 82%; width: fit-content; background: var(--card); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 7px 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+/* свои сообщения — светлые: тёмно-синий оставляем для главных кнопок */
+.bubble.mine { margin-left: auto; background: var(--plan-bg); color: var(--ink); border-color: transparent; border-radius: 16px 16px 4px 16px; }
 .bubble-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
-.bubble time { font-size: 11px; opacity: 0.65; justify-self: end; }
+.bubble time { font-size: 11px; color: var(--mute); margin-left: auto; }
 .chat-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
 .chat-form .input { min-height: 48px; padding-top: 12px; resize: none; field-sizing: content; max-height: 140px; }
 .chat-browser { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
@@ -673,8 +674,8 @@ input[type='search'].input { min-height: 48px; }
 .push-once { display: grid; gap: 0; } .push-once .text-link { min-height: 40px; }
 
 /* чат с диспетчером квадратом внизу главной родителя — писать сразу, без отдельного экрана */
-.chat.compact { height: auto; min-height: 0; grid-template-rows: auto auto auto auto; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 14px; }
-.chat.compact .chat-head { font-family: var(--f-display); font-size: 20px; }
+.chat.compact { height: auto; min-height: 0; grid-template-rows: auto auto auto auto; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 6px 14px 14px; gap: 6px; }
+.chat.compact .chat-head { font-size: 16px; }
 .chat.compact .chat-list { max-height: 240px; min-height: 64px; }
 .chat.compact .chat-form .btn { width: 48px; min-height: 48px; padding: 0; font-size: 20px; border-radius: 50%; }
 /* строка состояния «Сегодня» — информация, не кнопка */
@@ -685,3 +686,18 @@ input[type='search'].input { min-height: 48px; }
 .mock-head b { font-family: var(--f-display); font-size: 13px; }
 .mock-line { font-size: 10.5px; color: var(--w-ink); display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
 .mock-line i { width: 6px; height: 6px; border-radius: 50%; background: #2d7552; flex: none; }
+
+/* чат: одно поле и маленькая стрелка вместо большой кнопки */
+.chat-send { width: 48px; height: 48px; flex: none; border-radius: 50%; border: 0; background: var(--navy); color: var(--cream); display: grid; place-items: center; cursor: pointer; }
+.chat-send:disabled { background: var(--line); color: var(--mute); cursor: default; }
+.chat-all { margin-left: auto; font-size: 14px; font-weight: 600; color: var(--gold-ink); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
+.parent-chat .chat-head { display: none; }
+.parent-chat .chat { height: calc(100dvh - 130px); grid-template-rows: 1fr auto auto; }
+.chat.compact .chat-list { max-height: none; min-height: 0; }
+/* тонкие строки вместо жёлтых плашек на главной родителя */
+.slim-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 14px; color: var(--mute); padding: 0 4px; }
+.slim-line > span { flex: 0 1 auto; min-width: 0; }
+.inline-link.muted { color: var(--mute); font-weight: 400; }
+.week-card:not(.card) { padding: 0; }
+.week-card:not(.card) .week-month { padding: 0 4px; }
+.slim-close { margin-left: auto; font-size: 20px; line-height: 1; padding: 10px 8px; }

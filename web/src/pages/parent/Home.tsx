@@ -12,7 +12,7 @@ import { Clock } from '../../components/Clock';
 import { RideSheet } from './RideSheet';
 import { AbsenceSheet, Waiting, undoable } from './Requests';
 import { Today } from './Today';
-import { PushCard } from '../../components/PushCard';
+import { enablePush } from '../../lib/push';
 import { ChatBox } from '../../components/Chat';
 import { isIOS, isStandalone, pushSupported } from '../../lib/platform';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
@@ -25,7 +25,7 @@ const ACTIVE = ['driver_en_route', 'driver_arrived', 'on_board'];
 const WEEKS = 4;
 
 export function Home() {
-  const { me } = useAuth();
+  const { me, reload } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
@@ -146,7 +146,7 @@ export function Home() {
       )}
 
       {planned && (
-      <section className="card week-card">
+      <section className="week-card">
         <div className="week-month">{month[0].toUpperCase() + month.slice(1)}</div>
         <div className="week-pager" ref={pager} onScroll={() => window.requestAnimationFrame(onSwipe)}>
           {Array.from({ length: WEEKS }, (_, w) => (
@@ -181,28 +181,21 @@ export function Home() {
       )}
 
       {canOrder && tomorrowPlanned.length > 0 && (
-        <div className="note">
-          <b>
-            Завтра {groupTrips(tomorrowPlanned).length} {plural(groupTrips(tomorrowPlanned).length, TRIPS)}. Всё в силе?
-          </b>
-          <div className="btn-row">
-            <button
-              className="btn small"
-              onClick={async () => {
-                await api.post(`/parent/days/${tomorrow}/confirm`);
-                toast.show('Завтра подтверждено');
-                void load();
-              }}
-            >
-              Да, всё в силе
-            </button>
-            {selected !== tomorrow && (
-              <button className="btn small secondary" onClick={() => pick(tomorrow)}>
-                Посмотреть
-              </button>
-            )}
-          </div>
-        </div>
+        <p className="slim-line">
+          <span>
+            Завтра {groupTrips(tomorrowPlanned).length} {plural(groupTrips(tomorrowPlanned).length, TRIPS)}
+          </span>
+          <button
+            className="inline-link"
+            onClick={async () => {
+              await api.post(`/parent/days/${tomorrow}/confirm`);
+              toast.show('Завтра подтверждено');
+              void load();
+            }}
+          >
+            Всё в силе
+          </button>
+        </p>
       )}
 
       {params.get('sent') && <div className="note">Заявка отправлена. Диспетчер ответит уведомлением.</div>}
@@ -246,11 +239,33 @@ export function Home() {
       )}
 
       {planned && !pushLater && !me?.pushEnabled && ((isIOS() && !isStandalone()) || pushSupported()) && (
-        <div className="push-once">
-          <PushCard compact />
+        <p className="slim-line">
+          {isIOS() && !isStandalone() ? (
+            <>
+              <span>Уведомления придут, когда приложение будет на экране «Домой»</span>
+              <a className="inline-link" href="/app/family?s=notify">
+                Как
+              </a>
+            </>
+          ) : (
+            <>
+              <span>Уведомления выключены</span>
+              <button
+                className="inline-link"
+                onClick={async () => {
+                  const r = await enablePush();
+                  toast.show(r === 'ok' ? 'Уведомления включены' : r === 'denied' ? 'Разрешите уведомления для НА МЕСТЕ в настройках телефона' : 'Не получилось включить уведомления');
+                  await reload();
+                }}
+              >
+                Включить
+              </button>
+            </>
+          )}
           <button
-            className="text-link"
-            style={{ color: 'var(--mute)', fontWeight: 400 }}
+            className="inline-link muted slim-close"
+            aria-label="Не сейчас"
+            title="Не сейчас"
             onClick={() => {
               setPushLater(true);
               try {
@@ -260,9 +275,9 @@ export function Home() {
               }
             }}
           >
-            Не сейчас
+            ×
           </button>
-        </div>
+        </p>
       )}
 
       {/* чат с диспетчером — большим квадратом внизу, писать сразу */}
