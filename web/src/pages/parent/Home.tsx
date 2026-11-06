@@ -17,7 +17,7 @@ import { ChatBox } from '../../components/Chat';
 import { isIOS, isStandalone, pushSupported } from '../../lib/platform';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
 import type { Tone } from '@shared/domain';
-import { addDays, formatDayRu, localDate, localTime, WEEKDAYS_SHORT, weekStart } from '@shared/time';
+import { addDays, formatDateRu, localDate, localTime, weekday, WEEKDAYS_SHORT, weekStart } from '@shared/time';
 import { plural, TRIPS } from '@shared/ru';
 
 const ACTIVE = ['driver_en_route', 'driver_arrived', 'on_board'];
@@ -42,6 +42,15 @@ export function Home() {
   const [sheet, setSheet] = useState<RideView[] | null>(null);
   const [absence, setAbsence] = useState(false);
   const pager = useRef<HTMLDivElement>(null);
+  // после заявки — короткая подсказка на несколько секунд, без плашки между детьми и поездками
+  useEffect(() => {
+    if (!params.get('sent')) return;
+    toast.show('Заявка отправлена. Диспетчер ответит уведомлением');
+    const next = new URLSearchParams(params);
+    next.delete('sent');
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // уведомления спрашиваем один раз: «Не сейчас» прячет вопрос на этом телефоне (включить можно в «Профиле»)
   const [pushLater, setPushLater] = useState(() => {
     try {
@@ -108,7 +117,7 @@ export function Home() {
         ? 'поездки закончились'
         : 'поездок нет';
   const laterTrip = future.filter((r) => r.date > today).sort((x, y) => (x.date + x.pickupTime).localeCompare(y.date + y.pickupTime))[0];
-  const dayWord = (d: string) => (d === today ? 'сегодня' : d === addDays(today, 1) ? 'завтра' : formatDayRu(d));
+  const dayWord = (d: string) => (d === today ? 'сегодня' : d === addDays(today, 1) ? 'завтра' : `${WEEKDAYS_SHORT[weekday(d) - 1]}, ${formatDateRu(d)}`);
   const tomorrow = addDays(today, 1);
   const tomorrowPlanned = weeks.find((d) => d.date === tomorrow)?.rides.filter((r) => r.status === 'planned') ?? [];
   const month = new Date(`${addDays(monday0, weekIdx * 7 + 3)}T12:00:00`).toLocaleString('ru-RU', { month: 'long' });
@@ -192,7 +201,6 @@ export function Home() {
         </p>
       )}
 
-      {params.get('sent') && <div className="note">Заявка отправлена. Диспетчер ответит уведомлением.</div>}
 
       {planned &&
         (trips.length === 0 ? (
@@ -236,7 +244,7 @@ export function Home() {
         <p className="slim-line">
           {isIOS() && !isStandalone() ? (
             <>
-              <span>Уведомления придут, когда приложение будет на экране «Домой»</span>
+              <span>Для уведомлений — на экран «Домой»</span>
               <a className="inline-link" href="/app/family?s=notify">
                 Как
               </a>
