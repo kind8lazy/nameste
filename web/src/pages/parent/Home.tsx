@@ -13,7 +13,6 @@ import { RideSheet } from './RideSheet';
 import { AbsenceSheet, Waiting, undoable } from './Requests';
 import { Today } from './Today';
 import { enablePush } from '../../lib/push';
-import { ChatBox } from '../../components/Chat';
 import { isIOS, isStandalone, pushSupported } from '../../lib/platform';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
 import type { Tone } from '@shared/domain';
@@ -281,9 +280,6 @@ export function Home() {
           </button>
         </p>
       )}
-
-      {/* чат с диспетчером — большим квадратом внизу, писать сразу */}
-      <ChatBox />
 
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       <AbsenceSheet open={absence} onClose={() => setAbsence(false)} onDone={undoable(toast, () => void load())} />

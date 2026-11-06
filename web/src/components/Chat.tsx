@@ -1,6 +1,5 @@
 // Сообщения внутри приложения: переписка и список чатов. Работает у родителя, водителя и диспетчера.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { useStream } from '../lib/stream';
 import type { ChatMessage, ChatThread } from '@shared/api';
@@ -27,7 +26,7 @@ export function Badge({ n }: { n: number }) {
   return n > 0 ? <span className="badge" aria-label={`Непрочитанных: ${n}`}>{n > 99 ? '99+' : n}</span> : null;
 }
 
-export function ChatPane({ thread, title, onBack, compact = false }: { thread: string; title: string; onBack?: () => void; compact?: boolean }) {
+export function ChatPane({ thread, title, onBack }: { thread: string; title: string; onBack?: () => void }) {
   const [msgs, setMsgs] = useState<ChatMessage[] | null>(null);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +70,7 @@ export function ChatPane({ thread, title, onBack, compact = false }: { thread: s
   };
 
   return (
-    <section className={`chat${compact ? ' compact' : ''}`}>
+    <section className="chat">
       <header className="chat-head">
         {onBack && (
           <button className="btn small secondary" onClick={onBack} aria-label="К списку чатов">
@@ -79,19 +78,13 @@ export function ChatPane({ thread, title, onBack, compact = false }: { thread: s
           </button>
         )}
         <b>{title}</b>
-        {compact && (
-          <Link to="/app/chat" className="chat-all">
-            все ›
-          </Link>
-        )}
       </header>
       <div className="chat-list" ref={list} aria-live="polite">
         {msgs === null && !error && <div className="empty">Загрузка…</div>}
         {msgs?.length === 0 && <div className="empty">Сообщений пока нет. Напишите первым.</div>}
-        {(compact ? msgs?.slice(-2) : msgs)?.map((m, i, shown) => {
+        {msgs?.map((m, i, shown) => {
           const prev = shown[i - 1];
-          // в коротком чате на главной даты не показываем — только сами сообщения
-          const newDay = !compact && (!prev || dayLabel(prev.createdAt) !== dayLabel(m.createdAt));
+          const newDay = !prev || dayLabel(prev.createdAt) !== dayLabel(m.createdAt);
           const showName = !m.mine && (!prev || prev.authorId !== m.authorId || newDay);
           return (
             <div key={m.id}>
@@ -195,15 +188,3 @@ export function ChatBrowser({ initial }: { initial?: string | null }) {
   );
 }
 
-/** Чат с диспетчером прямо на главной родителя: последние сообщения и поле ввода — без перехода на другой экран. */
-export function ChatBox() {
-  const [thread, setThread] = useState<ChatThread | null | undefined>(undefined);
-  useEffect(() => {
-    api
-      .get<ChatThread[]>('/chat/threads')
-      .then((t) => setThread(t.find((x) => !x.id.startsWith('team')) ?? null))
-      .catch(() => setThread(null));
-  }, []);
-  if (!thread) return null;
-  return <ChatPane thread={thread.id} title="Чат с диспетчером" compact />;
-}
