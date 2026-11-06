@@ -5,7 +5,7 @@ import { homeFor, useAuth } from '../lib/auth';
 import type { Me } from '@shared/api';
 import { YandexCodeLogin } from '../components/YandexCodeLogin';
 import { isIOS, isStandalone } from '../lib/platform';
-import { IconCalendar, IconCar, IconChat, IconPause } from '../components/Tiles';
+import { IconCalendar, IconCar, IconChat } from '../components/Tiles';
 
 /** Текст ошибки выбирает приложение по коду — на странице входа нельзя показать произвольную «инструкцию». */
 const LOGIN_ERRORS: Record<string, string> = {
@@ -249,18 +249,37 @@ function PhoneScene() {
         <div className="phone-screen">
           <StatusBar />
           <div className="mock-pad">
-            <div className="mock-title">Маша, Лёва</div>
-            <small className="mock-sub">вторник, 3 ноября</small>
-            <MockTile title="Сегодня" sub="Маша в машине · будет в 14:33" accent icon={<IconCar />} />
-            <MockTile title="Неделя" sub="12 поездок · дальше чт в 14:20" icon={<IconCalendar />} />
-            <MockTile title="Ребёнка не будет" sub="Диспетчер отменит поездки" icon={<IconPause />} />
-            <MockTile title="Чат с диспетчером" sub="Вопросы и пожелания" icon={<IconChat />} />
+            <div className="mock-head">
+              <small>вторник, 3 ноября</small>
+              <i className="mock-plus">+</i>
+            </div>
+            <div className="mock-hero">
+              <small>Сейчас</small>
+              <b>Маша в машине</b>
+              <span>будет на Теннисе в 14:43</span>
+            </div>
+            <div className="mock-week">
+              {['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d, i) => (
+                <span key={d} className={i === 1 ? 'on' : ''}>
+                  <small>{d}</small>
+                  {2 + i}
+                  <i>{i < 5 ? '•' : ''}</i>
+                </span>
+              ))}
+            </div>
+            <div className="mock-list">
+              <span>
+                <b>16:40</b> Маша · Теннис → Музыка
+              </span>
+              <span>
+                <b>17:30</b> Лёва · Школа → Дом
+              </span>
+            </div>
           </div>
           <div className="mock-tabbar">
-            <span className="on">Главная</span>
-            <span>Неделя</span>
+            <span className="on">Поездки</span>
             <span>Чат</span>
-            <span>Семья</span>
+            <span>Профиль</span>
           </div>
         </div>
       </div>
@@ -283,18 +302,6 @@ function StatusBar({ dark }: { dark?: boolean }) {
       <span>9:41</span>
       <i className="phone-island" />
       <span className="phone-icons">●●● ▮</span>
-    </div>
-  );
-}
-
-function MockTile({ title, sub, icon, accent }: { title: string; sub: string; icon: React.ReactNode; accent?: boolean }) {
-  return (
-    <div className={`mock-tile${accent ? ' accent' : ''}`}>
-      <span className="tile-icon">{icon}</span>
-      <span>
-        <b>{title}</b>
-        <small>{sub}</small>
-      </span>
     </div>
   );
 }

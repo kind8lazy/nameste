@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Sheet } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
-import { Tag } from '../../components/ui';
 import { addDays, formatDateRu, localDate, weekday, WEEKDAYS_SHORT } from '@shared/time';
 import type { ChildView, ParentDay } from '@shared/api';
 
@@ -24,37 +23,6 @@ export interface RequestRow {
 }
 
 export const REQUEST_STATUS = { new: ['plan', 'на рассмотрении'], accepted: ['ok', 'принята'], declined: ['alert', 'не принята'] } as const;
-
-export function MyRequests() {
-  const [rows, setRows] = useState<RequestRow[]>([]);
-  const load = useCallback(async () => setRows(await api.get<RequestRow[]>('/parent/requests')), []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  useStream({ rides: () => void load(), refresh: () => void load() });
-  if (!rows.length) return null;
-  return (
-    <>
-      <div className="section-label">Мои заявки</div>
-      <ul className="list">
-        {rows.slice(0, 5).map((r) => (
-          <li key={r.id} style={{ padding: '11px 14px', display: 'grid', gap: 3 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <b>
-                {r.time} {r.children.join(', ')}
-              </b>
-              <Tag tone={REQUEST_STATUS[r.status][0]}>{REQUEST_STATUS[r.status][1]}</Tag>
-            </div>
-            <small className="page-sub">
-              {r.from} → {r.to} · {r.ruleText}, с {formatDateRu(r.startDate)}
-            </small>
-            {r.answer && <small>Ответ: {r.answer}</small>}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
 
 export interface ChangeRow {
   id: string;
@@ -79,40 +47,49 @@ export const CHANGE_STATUS = {
   withdrawn: ['plan', 'отозвано'],
 } as const;
 
-/** Мои просьбы изменить план и ответы диспетчера. */
-export function MyChanges() {
-  const [rows, setRows] = useState<ChangeRow[]>([]);
-  const load = useCallback(async () => setRows(await api.get<ChangeRow[]>('/parent/changes')), []);
+/** Что ждёт ответа диспетчера — и недавние отказы. Принятое не показываем: план уже изменился, пришло уведомление. */
+export function Waiting() {
+  const [changes, setChanges] = useState<ChangeRow[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const load = useCallback(async () => {
+    const [c, r] = await Promise.all([api.get<ChangeRow[]>('/parent/changes'), api.get<RequestRow[]>('/parent/requests')]);
+    setChanges(c);
+    setRequests(r);
+  }, []);
   useEffect(() => {
     void load();
   }, [load]);
   useStream({ rides: () => void load(), refresh: () => void load() });
-  const shown = rows.filter((r) => r.status !== 'withdrawn').slice(0, 5);
-  if (!shown.length) return null;
+  const since = Date.now() - 2 * 864e5;
+  const recent = (x: { status: string; createdAt?: string }) => x.status === 'new' || (x.status === 'declined' && (!x.createdAt || Date.parse(x.createdAt) > since));
+  const ch = changes.filter(recent).slice(0, 4);
+  const rq = requests.filter(recent).slice(0, 3);
+  if (!ch.length && !rq.length) return null;
+  const cap = (t: string) => t[0].toUpperCase() + t.slice(1);
   return (
-    <>
-      <div className="section-label">Просьбы диспетчеру</div>
-      <ul className="list">
-        {shown.map((r) => (
-          <li key={r.id} style={{ padding: '11px 14px', display: 'grid', gap: 3 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <b>{r.title[0].toUpperCase() + r.title.slice(1)}</b>
-              <Tag tone={CHANGE_STATUS[r.status][0]}>{CHANGE_STATUS[r.status][1]}</Tag>
-            </div>
-            <small className="page-sub">
-              {r.summary}
-              {r.reason ? ` · ${r.reason}` : ''}
-            </small>
-            {r.answer && <small>Ответ: {r.answer}</small>}
-            {r.status === 'new' && (
-              <button className="btn small secondary" style={{ justifySelf: 'start' }} onClick={() => void api.del(`/parent/changes/${r.id}`).then(load)}>
-                Отозвать
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </>
+    <ul className="waiting" aria-label="Просьбы диспетчеру">
+      {ch.map((r) => (
+        <li key={r.id} className={r.status}>
+          <span>
+            <b>{r.status === 'new' ? 'Ждёт ответа' : 'Не принято'}:</b> {cap(r.title)} · {r.summary}
+            {r.answer ? ` — ${r.answer}` : ''}
+          </span>
+          {r.status === 'new' && (
+            <button type="button" onClick={() => void api.del(`/parent/changes/${r.id}`).then(load)}>
+              отозвать
+            </button>
+          )}
+        </li>
+      ))}
+      {rq.map((r) => (
+        <li key={r.id} className={r.status}>
+          <span>
+            <b>{r.status === 'new' ? 'Заявка ждёт ответа' : 'Заявка не принята'}:</b> {r.children.join(', ')}, {r.time} · {r.from} → {r.to}
+            {r.answer ? ` — ${r.answer}` : ''}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -207,18 +184,19 @@ export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose
   );
 }
 
-/** Сообщение после просьбы с кнопкой «Отменить» на 10 секунд: просьба отзывается, диспетчер её не увидит. */
+/** Сообщение после просьбы с кнопкой «Отменить» на 10 секунд: просьба отзывается, диспетчер её не увидит.
+ *  Одна поездка на двоих детей — несколько просьб: «Отменить» отзывает все. */
 export function undoable(toast: { show: (t: string, a?: { label: string; onClick: () => void }) => void }, reload: () => void) {
-  return (msg: string, changeId?: string) => {
+  return (msg: string, changeId?: string | string[]) => {
+    const ids = (Array.isArray(changeId) ? changeId : [changeId]).filter((x): x is string => !!x);
     toast.show(
       msg,
-      changeId
+      ids.length
         ? {
             label: 'Отменить',
             onClick: () =>
-              void api
-                .del(`/parent/changes/${changeId}`)
-                .then(() => toast.show('Просьба отозвана — диспетчер её не увидит'))
+              void Promise.all(ids.map((id) => api.del(`/parent/changes/${id}`)))
+                .then(() => toast.show(ids.length > 1 ? 'Просьбы отозваны — диспетчер их не увидит' : 'Просьба отозвана — диспетчер её не увидит'))
                 .catch((e) => toast.show((e as Error).message))
                 .finally(reload),
           }

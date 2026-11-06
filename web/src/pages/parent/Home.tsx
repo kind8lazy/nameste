@@ -10,10 +10,11 @@ import { groupTrips, tripState } from '../../lib/trips';
 import { Tag, useToast, Skeleton } from '../../components/ui';
 import { Clock } from '../../components/Clock';
 import { RideSheet } from './RideSheet';
-import { AbsenceSheet, MyChanges, MyRequests, undoable } from './Requests';
+import { AbsenceSheet, Waiting, undoable } from './Requests';
 import { Today } from './Today';
 import type { ParentDay, RideView, WeekDay } from '@shared/api';
-import { addDays, localDate, localTime, WEEKDAYS_SHORT, weekStart } from '@shared/time';
+import type { Tone } from '@shared/domain';
+import { addDays, formatDayRu, localDate, localTime, WEEKDAYS_SHORT, weekStart } from '@shared/time';
 import { plural, TRIPS } from '@shared/ru';
 
 const ACTIVE = ['driver_en_route', 'driver_arrived', 'on_board'];
@@ -86,15 +87,11 @@ export function Home() {
   const future = weeks.flatMap((w) => w.rides).filter((r) => r.status !== 'cancelled' && (r.date > today || (r.date === today && !['delivered', 'no_show'].includes(r.status))));
   const planned = future.length > 0;
   const live = day.rides.find((r) => ACTIVE.includes(r.status));
-  const todayLeft = day.rides.filter((r) => r.status !== 'cancelled' && !['delivered', 'no_show'].includes(r.status) && r.pickupTime >= now);
-  const todayAll = day.rides.filter((r) => r.status !== 'cancelled');
-  const status = live
-    ? `${live.child.firstName}: ${live.statusLabel.toLowerCase()}`
-    : todayLeft.length
-      ? `Сегодня в ${todayLeft[0].pickupTime} — ${todayLeft[0].child.firstName}, ${todayLeft[0].from.name} → ${todayLeft[0].to.name}`
-      : todayAll.length
-        ? 'Поездки на сегодня закончились'
-        : 'Сегодня поездок нет';
+  // «Дальше»: ближайшая поездка, которая ещё впереди (сегодняшние — только если время не прошло)
+  const upcoming = future.filter((r) => r.date > today || r.pickupTime >= now || ACTIVE.includes(r.status)).sort((x, y) => (x.date + x.pickupTime).localeCompare(y.date + y.pickupTime));
+  const nextRide = live ?? upcoming[0];
+  const nextTrip = nextRide ? groupTrips(weeks.flatMap((w) => w.rides).filter((r) => r.date === nextRide.date && r.status !== 'cancelled')).find((t) => t.rides.some((r) => r.id === nextRide.id)) : undefined;
+  const dayWord = (d: string) => (d === today ? 'сегодня' : d === addDays(today, 1) ? 'завтра' : formatDayRu(d));
   const tomorrow = addDays(today, 1);
   const tomorrowPlanned = weeks.find((d) => d.date === tomorrow)?.rides.filter((r) => r.status === 'planned') ?? [];
   const month = new Date(`${addDays(monday0, weekIdx * 7 + 3)}T12:00:00`).toLocaleString('ru-RU', { month: 'long' });
@@ -103,8 +100,8 @@ export function Home() {
     <main className="page">
       <div className="page-head trips-head">
         <Clock />
-        <h1 className="page-title">{planned ? 'Запланированные поездки' : 'Запланируйте поездки своего ребёнка'}</h1>
-        {canOrder && (
+        <h1 className={`page-title${planned ? '' : ' big'}`}>{planned ? 'Запланированные поездки' : 'Запланируйте поездки своего ребёнка'}</h1>
+        {canOrder && planned && (
           <button className="plus-btn" aria-label="Новая поездка" title="Новая поездка" onClick={() => nav(`/app/new${selected > today ? `?date=${selected}` : ''}`)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
               <path d="M12 5v14M5 12h14" />
@@ -113,17 +110,45 @@ export function Home() {
         )}
       </div>
 
-      {/* строка состояния: не кнопка, а то, что происходит сейчас; во время поездки — ссылка на карту */}
-      {live ? (
-        <Link to="/app/today" className="status-line live">
-          <span className="dot" aria-hidden />
-          <span>{status}</span>
-          <b>Карта</b>
-        </Link>
-      ) : (
-        <p className="status-line">{status}</p>
+      {!planned && (
+        <div className="first-run">
+          <p>Кого, откуда, куда и когда — остальное сделает диспетчер.</p>
+          {canOrder && (
+            <Link to="/app/new" className="btn block">
+              Заказать поездку
+            </Link>
+          )}
+        </div>
       )}
 
+      {/* главное на экране — что дальше с ребёнком; во время поездки — сразу на карту */}
+      {live && nextTrip ? (
+        <Link to="/app/today" className="hero-next live">
+          <small>
+            <span className="dot" aria-hidden /> Сейчас
+          </small>
+          <b>
+            {nextTrip.rides.map((r) => r.child.firstName).join(', ')}: {live.statusLabel.toLowerCase()}
+          </b>
+          <span>
+            {live.status === 'on_board' && live.eta ? `будет на «${live.to.name}» в ${live.eta}` : `${live.from.name} → ${live.to.name}`} · карта
+          </span>
+        </Link>
+      ) : (
+        nextTrip && (
+          <button className="hero-next" onClick={() => setSheet(nextTrip.rides)}>
+            <small>Дальше · {dayWord(nextTrip.date)}</small>
+            <b>
+              {nextTrip.rides.map((r) => r.child.firstName).join(', ')}, {nextTrip.pickupTime}
+            </b>
+            <span>
+              {nextTrip.fromName} → {[...new Set(nextTrip.rides.map((r) => r.to.name))].join(', ')}
+            </span>
+          </button>
+        )
+      )}
+
+      {planned && (
       <section className="card week-card">
         <div className="week-month">{month[0].toUpperCase() + month.slice(1)}</div>
         <div className="week-pager" ref={pager} onScroll={() => window.requestAnimationFrame(onSwipe)}>
@@ -143,8 +168,9 @@ export function Home() {
           ))}
         </div>
       </section>
+      )}
 
-      {day.children.length > 1 && (
+      {planned && day.children.length > 1 && (
         <div className="chips" role="tablist" aria-label="Дети">
           <button role="tab" aria-selected={!child} className={!child ? 'on' : ''} onClick={() => setChild(null)}>
             Все
@@ -184,42 +210,42 @@ export function Home() {
 
       {params.get('sent') && <div className="note">Заявка отправлена. Диспетчер ответит, уведомление придёт на телефон.</div>}
 
-      {trips.length === 0 ? (
-        <div className="card empty">{!planned && canOrder ? 'Нажмите «+» вверху — диспетчер получит заявку и ответит.' : 'В этот день поездок нет.'}</div>
-      ) : (
-        <ul className="list">
-          {trips.map((t) => {
-            const s = tripState(t);
-            return (
-              <li key={t.key}>
-                <button className={`row${s.cancelled ? ' cancelled' : ''}`} onClick={() => setSheet(t.rides)}>
-                  <time>{t.pickupTime}</time>
-                  <span className="main">
-                    <b>{t.rides.filter((r) => r.status !== 'cancelled' || s.cancelled).map((r) => r.child.firstName).join(', ')}</b>
-                    <small>
-                      {t.fromName} → {[...new Set(t.rides.map((r) => r.to.name))].join(', ')}
-                      {t.rides.some((r) => r.status === 'cancelled') && !s.cancelled ? ` · отмена: ${t.rides.filter((r) => r.status === 'cancelled').map((r) => r.child.firstName).join(', ')}` : ''}
-                    </small>
-                  </span>
-                  <Tag tone={s.cancelled ? 'muted' : t.rides.every((r) => r.status === 'confirmed') ? 'ok' : s.tone}>
-                    {s.cancelled ? 'отменена' : s.done ? 'на месте' : t.rides.every((r) => r.status === 'confirmed') ? 'подтв.' : s.live ? 'сейчас' : 'план'}
-                  </Tag>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {planned &&
+        (trips.length === 0 ? (
+          <div className="card empty">В этот день поездок нет.</div>
+        ) : (
+          <ul className="list">
+            {trips.map((t) => {
+              const s = tripState(t);
+              const off = t.rides.filter((r) => r.status === 'cancelled');
+              // метка — только у особого статуса; поездка без метки идёт по плану
+              const tag: [Tone, string] | null = s.cancelled ? ['muted', 'отменена'] : s.live ? ['gold', 'сейчас'] : s.done ? ['ok', 'на месте'] : t.rides.some((r) => r.pending) ? ['plan', 'ждёт ответа'] : null;
+              return (
+                <li key={t.key}>
+                  <button className={`row${s.cancelled ? ' cancelled' : ''}`} onClick={() => setSheet(t.rides)}>
+                    <time>{t.pickupTime}</time>
+                    <span className="main">
+                      <b>{t.rides.filter((r) => r.status !== 'cancelled' || s.cancelled).map((r) => r.child.firstName).join(', ')}</b>
+                      <small>
+                        {t.fromName} → {[...new Set(t.rides.map((r) => r.to.name))].join(', ')}
+                        {off.length && !s.cancelled ? ` · отмена: ${off.map((r) => r.child.firstName).join(', ')}` : ''}
+                      </small>
+                    </span>
+                    {tag && <Tag tone={tag[0]}>{tag[1]}</Tag>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ))}
+
+      <Waiting />
 
       {canOrder && planned && (
-        <button className="btn secondary block big-action" onClick={() => setAbsence(true)}>
+        <button className="text-link underline" onClick={() => setAbsence(true)}>
           Ребёнка не будет
-          <small>Болезнь, отпуск — диспетчер отменит поездки</small>
         </button>
       )}
-
-      <MyChanges />
-      <MyRequests />
 
       <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       <AbsenceSheet open={absence} onClose={() => setAbsence(false)} onDone={undoable(toast, () => void load())} />
