@@ -2,7 +2,7 @@
 // строка состояния (что сейчас), неделя полосой (листается пальцем), дети, поездки выбранного дня.
 // Новая поездка — «+» в углу, «Ребёнка не будет» — одна большая кнопка под списком.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { useAuth } from '../../lib/auth';
@@ -127,14 +127,10 @@ export function Home() {
         )}
       </div>
 
+      {/* без поездок — только подсказка: заказ открывает «+» в углу, второй кнопки не нужно */}
       {!planned && (
         <div className="first-run">
-          <p>Кого, откуда, куда и когда — остальное сделает диспетчер.</p>
-          {canOrder && (
-            <Link to="/app/new" className="btn block">
-              Заказать поездку
-            </Link>
-          )}
+          <p>{canOrder ? 'Нажмите «+» вверху: кого, откуда, куда и когда — остальное сделает диспетчер.' : 'Поездки появятся здесь, когда диспетчер их запланирует.'}</p>
         </div>
       )}
 
