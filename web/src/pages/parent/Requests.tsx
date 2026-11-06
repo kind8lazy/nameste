@@ -38,6 +38,7 @@ export interface ChangeRow {
   reason: string | null;
   answer: string | null;
   createdAt?: string;
+  dateFrom?: string;
 }
 
 export const CHANGE_STATUS = {
@@ -62,34 +63,53 @@ export function Waiting() {
   useStream({ rides: () => void load(), refresh: () => void load() });
   const since = Date.now() - 2 * 864e5;
   const recent = (x: { status: string; createdAt?: string }) => x.status === 'new' || (x.status === 'declined' && (!x.createdAt || Date.parse(x.createdAt) > since));
-  const ch = changes.filter(recent).slice(0, 4);
-  const rq = requests.filter(recent).slice(0, 3);
-  if (!ch.length && !rq.length) return null;
-  const cap = (t: string) => t[0].toUpperCase() + t.slice(1);
+  const cap = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+  const dd = (d?: string) => (d ? `${WEEKDAYS_SHORT[weekday(d) - 1]} ${Number(d.slice(8))}` : '');
+  // одна короткая строка на просьбу: кто, когда, что меняется
+  const short = (r: ChangeRow) =>
+    r.kind === 'time'
+      ? `${r.childName}, ${dd(r.dateFrom)}: ${r.currentTime ?? ''} → ${r.time}`
+      : r.kind === 'cancel'
+        ? `${r.childName}, ${dd(r.dateFrom)}: отменить`
+        : r.kind === 'absence'
+          ? `${r.childName} не будет · ${r.summary}`
+          : cap(r.title);
+  type Item = { id: string; text: string; answer: string | null; withdraw?: () => void };
+  const toItem = (r: ChangeRow): Item => ({ id: r.id, text: short(r), answer: r.answer, withdraw: r.status === 'new' ? () => void api.del(`/parent/changes/${r.id}`).then(load) : undefined });
+  const fromReq = (r: RequestRow): Item => ({ id: r.id, text: `${r.children.join(', ')}, ${r.time} · ${r.from} → ${r.to}`, answer: r.answer });
+  const waiting = [...changes.filter((c) => c.status === 'new').map(toItem), ...requests.filter((r) => r.status === 'new').map(fromReq)];
+  const declined = [...changes.filter((c) => c.status === 'declined' && recent(c)).map(toItem), ...requests.filter((r) => r.status === 'declined' && recent(r)).map(fromReq)];
+  if (!waiting.length && !declined.length) return null;
+  const group = (label: string, items: Item[], cls: string) =>
+    items.length > 0 && (
+      <div className={`waiting ${cls}`}>
+        <div className="waiting-label">
+          {label}
+          {items.length > 1 ? ` · ${items.length}` : ''}
+        </div>
+        <ul>
+          {items.slice(0, 3).map((it) => (
+            <li key={it.id}>
+              <span>
+                {it.text}
+                {it.answer ? ` — ${it.answer}` : ''}
+              </span>
+              {it.withdraw && (
+                <button type="button" onClick={it.withdraw}>
+                  отозвать
+                </button>
+              )}
+            </li>
+          ))}
+          {items.length > 3 && <li className="more">и ещё {items.length - 3}</li>}
+        </ul>
+      </div>
+    );
   return (
-    <ul className="waiting" aria-label="Просьбы диспетчеру">
-      {ch.map((r) => (
-        <li key={r.id} className={r.status}>
-          <span>
-            <b>{r.status === 'new' ? 'Ждёт ответа' : 'Не принято'}:</b> {cap(r.title)} · {r.summary}
-            {r.answer ? ` — ${r.answer}` : ''}
-          </span>
-          {r.status === 'new' && (
-            <button type="button" onClick={() => void api.del(`/parent/changes/${r.id}`).then(load)}>
-              отозвать
-            </button>
-          )}
-        </li>
-      ))}
-      {rq.map((r) => (
-        <li key={r.id} className={r.status}>
-          <span>
-            <b>{r.status === 'new' ? 'Заявка ждёт ответа' : 'Заявка не принята'}:</b> {r.children.join(', ')}, {r.time} · {r.from} → {r.to}
-            {r.answer ? ` — ${r.answer}` : ''}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <>
+      {group('Ждут ответа диспетчера', waiting, 'new')}
+      {group('Не принято', declined, 'declined')}
+    </>
   );
 }
 

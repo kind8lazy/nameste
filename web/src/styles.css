@@ -650,12 +650,14 @@ input[type='search'].input { min-height: 48px; }
 .first-run { display: grid; gap: 16px; padding: 8px 0; }
 .first-run p { margin: 0; font-size: 16px; line-height: 1.45; color: var(--mute); }
 .text-link.underline { text-decoration: underline; text-underline-offset: 4px; }
-.waiting { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.waiting li { display: flex; align-items: baseline; gap: 8px; font-size: 14px; line-height: 1.4; color: var(--mute); padding: 0 4px; }
-.waiting li > span { flex: 1; min-width: 0; }
-.waiting li b { color: var(--ink); font-weight: 600; }
-.waiting li.declined b { color: var(--alert); }
-.waiting button { flex: none; border: 0; background: transparent; padding: 10px 4px; margin: -10px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--gold-ink); cursor: pointer; }
+.waiting { display: grid; gap: 2px; padding: 0 4px; min-width: 0; }
+.waiting-label { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--mute); }
+.waiting.declined .waiting-label { color: var(--alert); }
+.waiting ul { list-style: none; margin: 0; padding: 0; display: grid; min-width: 0; }
+.waiting li { display: flex; align-items: center; gap: 8px; min-height: 32px; min-width: 0; font-size: 14px; color: var(--ink); }
+.waiting li > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.waiting li.more { color: var(--mute); }
+.waiting button { flex: none; border: 0; background: transparent; padding: 8px 4px; font: inherit; font-size: 14px; font-weight: 600; color: var(--gold-ink); cursor: pointer; }
 .trips-head .page-title.big { font-size: 28px; }
 
 /* строка списка-ссылки: «Места 5 ›», «Режим» */
@@ -693,7 +695,9 @@ input[type='search'].input { min-height: 48px; }
 .chat-all { margin-left: auto; font-size: 14px; font-weight: 600; color: var(--gold-ink); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
 .parent-chat .chat-head { display: none; }
 .parent-chat .chat { height: calc(100dvh - 130px); grid-template-rows: 1fr auto auto; }
-.chat.compact .chat-list { max-height: none; min-height: 0; }
+.chat.compact .chat-list { max-height: none; min-height: 0; padding: 0 2px; }
+.chat.compact .chat-name { display: none; }
+.chat.compact .chat-head { min-height: 40px; }
 /* тонкие строки вместо жёлтых плашек на главной родителя */
 .slim-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 14px; color: var(--mute); padding: 0 4px; }
 .slim-line > span { flex: 0 1 auto; min-width: 0; }

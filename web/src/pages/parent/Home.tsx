@@ -117,7 +117,7 @@ export function Home() {
     <main className="page">
       <div className="page-head trips-head">
         <Clock />
-        <h1 className={`page-title${planned ? '' : ' big'}`}>{planned ? 'Запланированные поездки' : 'Запланируйте поездки своего ребёнка'}</h1>
+        <h1 className="page-title">{planned ? 'Запланированные поездки' : 'Запланируйте поездки своего ребёнка'}</h1>
         {canOrder && (
           <button className="plus-btn" aria-label="Новая поездка" title="Новая поездка" onClick={() => nav(`/app/new${selected > today ? `?date=${selected}` : ''}`)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
@@ -127,12 +127,6 @@ export function Home() {
         )}
       </div>
 
-      {/* без поездок — только подсказка: заказ открывает «+» в углу, второй кнопки не нужно */}
-      {!planned && (
-        <div className="first-run">
-          <p>{canOrder ? 'Нажмите «+» вверху: кого, откуда, куда и когда — остальное сделает диспетчер.' : 'Поездки появятся здесь, когда диспетчер их запланирует.'}</p>
-        </div>
-      )}
 
       {/* «Сегодня» — строка состояния, а не кнопка (так просила Анастасия) */}
       {planned && (
