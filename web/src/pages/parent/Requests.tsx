@@ -76,7 +76,7 @@ export function Waiting() {
           : cap(r.title);
   type Item = { id: string; text: string; answer: string | null; withdraw?: () => void };
   const toItem = (r: ChangeRow): Item => ({ id: r.id, text: short(r), answer: r.answer, withdraw: r.status === 'new' ? () => void api.del(`/parent/changes/${r.id}`).then(load) : undefined });
-  const fromReq = (r: RequestRow): Item => ({ id: r.id, text: `${r.children.join(', ')}, ${r.time} · ${r.from} → ${r.to}`, answer: r.answer });
+  const fromReq = (r: RequestRow): Item => ({ id: r.id, text: `${r.children.join(', ')}, ${r.ruleText === 'разово' ? dd(r.startDate) : r.ruleText} в ${r.time} · ${r.from} → ${r.to}`, answer: r.answer });
   const waiting = [...changes.filter((c) => c.status === 'new').map(toItem), ...requests.filter((r) => r.status === 'new').map(fromReq)];
   const declined = [...changes.filter((c) => c.status === 'declined' && recent(c)).map(toItem), ...requests.filter((r) => r.status === 'declined' && recent(r)).map(fromReq)];
   if (!waiting.length && !declined.length) return null;

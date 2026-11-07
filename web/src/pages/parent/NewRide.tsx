@@ -38,7 +38,8 @@ export function NewRide() {
   const [toAddr, setToAddr] = useState('');
   // «Заказать на этот день» из недели передаёт дату в адресе
   const [date, setDate] = useState(() => { const d = new URLSearchParams(window.location.search).get('date'); return d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= localDate() ? d : nextWorkday(); });
-  const [time, setTime] = useState('14:20');
+  // время не подставляем: раньше стояло 14:20 по умолчанию, и все заявки уходили с ним
+  const [time, setTime] = useState('');
   const [repeat, setRepeat] = useState<Repeat>('weekly');
   const [days, setDays] = useState<number[]>([weekday(nextWorkday())]);
   const [escort, setEscort] = useState<'to_door' | 'to_entrance'>('to_door');
@@ -109,7 +110,7 @@ export function NewRide() {
   const dayNames = (days.length ? days : [weekday(date)]).map((d) => WEEKDAYS_SHORT[d - 1]).join(', ');
   const summary = [repeat === 'once' ? 'Разово' : `${repeat === 'weekly' ? 'Каждую неделю' : 'Через неделю'}: ${dayNames}`, escort === 'to_door' ? 'до кабинета, передать взрослому' : 'до входа'].join(' · ');
   const same = !!from && from !== NEW && from === to;
-  const ready = kids.length && (from && (from !== NEW || fromAddr.trim())) && (to && (to !== NEW || toAddr.trim())) && !same;
+  const ready = kids.length && /^\d{2}:\d{2}$/.test(time) && (from && (from !== NEW || fromAddr.trim())) && (to && (to !== NEW || toAddr.trim())) && !same;
 
   return (
     <main className="page">
@@ -241,7 +242,7 @@ export function NewRide() {
       {same && <div className="note error">Откуда и куда — одно и то же место. Выберите разные.</div>}
       {error && <div className="note error">{error}</div>}
       <button className="btn block" disabled={!ready || busy} onClick={submit}>
-        {busy ? 'Отправляю…' : 'Отправить диспетчеру'}
+        {busy ? 'Отправляю…' : time ? 'Отправить диспетчеру' : 'Укажите время'}
       </button>
     </main>
   );
