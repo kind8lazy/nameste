@@ -115,7 +115,7 @@ export function Waiting() {
 
 const ABSENCE_REASONS = ['Болезнь', 'Семейные обстоятельства', 'Отпуск', 'Сборы'];
 
-/** «Ребёнка не будет»: причина и дни подряд. Поездки отменит диспетчер. */
+/** «Отсутствие ребёнка»: причина и дни подряд. Поездки отменит диспетчер. */
 export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: (msg: string, changeId?: string) => void }) {
   const [children, setChildren] = useState<ChildView[]>([]);
   const [childId, setChildId] = useState('');
@@ -158,7 +158,7 @@ export function AbsenceSheet({ open, onClose, onDone }: { open: boolean; onClose
   };
   return (
     <Sheet open={open} onClose={onClose}>
-      <h3>Ребёнка не будет</h3>
+      <h3>Отсутствие ребёнка</h3>
       {children.length > 1 && (
         <div className="pick">
           {children.map((c) => (
