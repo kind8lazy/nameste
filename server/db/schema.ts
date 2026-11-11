@@ -466,3 +466,32 @@ export const changeRequests = sqliteTable(
   },
   (t) => [index('changes_family').on(t.familyId), index('changes_status').on(t.status)],
 );
+
+/**
+ * Заявки новых семей из Телеграм-бота. Семьи в базе ещё нет — это контакт и пожелания своими словами;
+ * диспетчер перезванивает и заводит семью сам. Бот работает отдельно (сервер в России не достаёт до Телеграма)
+ * и присылает готовую заявку по секретному ключу.
+ */
+export const leads = sqliteTable(
+  'leads',
+  {
+    id: text('id').primaryKey(),
+    source: text('source').$type<'telegram'>().notNull().default('telegram'),
+    /** ключ заявки на стороне бота — повторная отправка той же заявки не создаёт дубль */
+    externalId: text('external_id').notNull(),
+    tgChatId: text('tg_chat_id'),
+    tgUsername: text('tg_username'),
+    name: text('name').notNull(),
+    phone: text('phone').notNull(),
+    children: text('children').notNull(),
+    fromText: text('from_text').notNull(),
+    toText: text('to_text').notNull(),
+    schedule: text('schedule').notNull(),
+    comment: text('comment'),
+    status: text('status').$type<'new' | 'done' | 'declined'>().notNull().default('new'),
+    note: text('note'),
+    decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('leads_external').on(t.source, t.externalId), index('leads_status').on(t.status)],
+);

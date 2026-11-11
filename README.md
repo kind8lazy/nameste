@@ -11,6 +11,7 @@
 
 Всё бесплатно: сервер свой, карты открытые (OpenStreetMap), уведомления — Web Push, вход — код приглашения.
 Как устроено и почему — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Телеграм-бот для заявок новых семей — [docs/TELEGRAM-BOT.md](docs/TELEGRAM-BOT.md) (`npm run bot`).
 
 ## Запуск на компьютере
 

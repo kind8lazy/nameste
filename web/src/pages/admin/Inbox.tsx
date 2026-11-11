@@ -14,16 +14,18 @@ import { REQUEST_STATUS, CHANGE_STATUS, type RequestRow, type ChangeRow } from '
 export function useInbox() {
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [changes, setChanges] = useState<ChangeRow[]>([]);
+  const [leads, setLeads] = useState<LeadRow[]>([]);
   const load = useCallback(async () => {
-    const [r, c] = await Promise.all([api.get<RequestRow[]>('/admin/requests'), api.get<ChangeRow[]>('/admin/changes')]);
+    const [r, c, l] = await Promise.all([api.get<RequestRow[]>('/admin/requests'), api.get<ChangeRow[]>('/admin/changes'), api.get<LeadRow[]>('/admin/leads').catch(() => [] as LeadRow[])]);
     setRequests(r);
     setChanges(c);
+    setLeads(l);
   }, []);
   useEffect(() => {
     void load();
   }, [load]);
   useStream({ rides: () => void load(), refresh: () => void load() });
-  return { requests, changes, load };
+  return { requests, changes, leads, load };
 }
 
 /** Только то, что ждёт решения. Пусто — ничего не показываем. */
@@ -50,7 +52,7 @@ export function PendingList({ onDone }: { onDone: (msg: string) => void }) {
 
 export function Inbox() {
   const toast = useToast();
-  const { requests, changes, load } = useInbox();
+  const { requests, changes, leads, load } = useInbox();
   const unread = useUnread();
   const done = (m: string) => {
     toast.show(m);
@@ -58,6 +60,7 @@ export function Inbox() {
   };
   const newChanges = changes.filter((c) => c.status === 'new');
   const newRequests = requests.filter((r) => r.status === 'new');
+  const newLeads = leads.filter((l) => l.status === 'new');
   const history = [
     ...changes.filter((c) => c.status === 'accepted' || c.status === 'declined').map((c) => ({ at: String(c.createdAt ?? ''), node: <ChangeCard key={c.id} c={c} onDone={done} /> })),
     ...requests.filter((r) => r.status !== 'new').map((r) => ({ at: String(r.createdAt ?? ''), node: <RequestCard key={r.id} r={r} onDone={done} /> })),
@@ -71,7 +74,7 @@ export function Inbox() {
         <div className="page-head">
           <Clock />
           <h1 className="page-title">Входящие</h1>
-          <span className="page-sub">{newChanges.length + newRequests.length ? `${newChanges.length + newRequests.length} ${plural(newChanges.length + newRequests.length, ['ждёт', 'ждут', 'ждут'])} ответа` : 'ничего не ждёт'}</span>
+          <span className="page-sub">{newChanges.length + newRequests.length + newLeads.length ? `${newChanges.length + newRequests.length + newLeads.length} ${plural(newChanges.length + newRequests.length + newLeads.length, ['ждёт', 'ждут', 'ждут'])} ответа` : 'ничего не ждёт'}</span>
         </div>
         {unread > 0 && (
           <Link to="/admin/chat" className="inbox-msgs">
@@ -81,7 +84,10 @@ export function Inbox() {
             <span>›</span>
           </Link>
         )}
-        {!newChanges.length && !newRequests.length && <div className="card empty">Всё решено. Новое появится здесь.</div>}
+        {!newChanges.length && !newRequests.length && !newLeads.length && <div className="card empty">Всё решено. Новое появится здесь.</div>}
+        {newLeads.map((l) => (
+          <LeadCard key={l.id} l={l} onDone={done} />
+        ))}
         {newChanges.map((c) => (
           <ChangeCard key={c.id} c={c} onDone={done} />
         ))}
@@ -213,6 +219,64 @@ export function ChangeCard({ c, onDone }: { c: ChangeRow; onDone: (msg: string) 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export interface LeadRow {
+  id: string;
+  name: string;
+  phone: string;
+  phoneRaw: string;
+  tgUsername: string | null;
+  children: string;
+  fromText: string;
+  toText: string;
+  schedule: string;
+  comment: string | null;
+  status: 'new' | 'done' | 'declined';
+  note: string | null;
+  createdAt: string;
+}
+
+/** Заявка новой семьи из Телеграм-бота: позвонить или написать, затем отметить «связались» или «отказ». */
+export function LeadCard({ l, onDone }: { l: LeadRow; onDone: (msg: string) => void }) {
+  const decide = async (status: 'done' | 'declined') => {
+    try {
+      await api.post(`/admin/leads/${l.id}`, { status });
+      onDone(status === 'done' ? 'Отмечено: связались' : 'Заявка закрыта');
+    } catch (e) {
+      onDone(e instanceof ApiError ? e.message : 'Не получилось');
+    }
+  };
+  return (
+    <div className="card lead-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+        <b>Новая семья: {l.name}</b>
+        <span className="tag tone-gold">Телеграм</span>
+      </div>
+      <small className="page-sub">
+        {l.children} · {l.fromText} → {l.toText} · {l.schedule}
+        {l.comment ? ` · ${l.comment}` : ''}
+      </small>
+      <div className="btn-row" style={{ flexWrap: 'wrap' }}>
+        <a className="btn small" href={`tel:+${l.phoneRaw}`}>
+          Позвонить {l.phone}
+        </a>
+        {l.tgUsername && (
+          <a className="btn small secondary" href={`https://t.me/${l.tgUsername}`} target="_blank" rel="noreferrer">
+            Написать @{l.tgUsername}
+          </a>
+        )}
+      </div>
+      <div className="btn-row">
+        <button className="btn small secondary" onClick={() => void decide('done')}>
+          Связались
+        </button>
+        <button className="btn small secondary" onClick={() => void decide('declined')}>
+          Отказ
+        </button>
+      </div>
     </div>
   );
 }

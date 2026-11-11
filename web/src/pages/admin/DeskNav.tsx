@@ -11,8 +11,12 @@ import { Badge, useUnread } from '../../components/Chat';
 export function useInboxCount(): number {
   const [n, setN] = useState(0);
   const load = useCallback(async () => {
-    const [changes, requests] = await Promise.all([api.get<{ status: string }[]>('/admin/changes'), api.get<{ status: string }[]>('/admin/requests')]);
-    setN(changes.filter((c) => c.status === 'new').length + requests.filter((r) => r.status === 'new').length);
+    const [changes, requests, leads] = await Promise.all([
+      api.get<{ status: string }[]>('/admin/changes'),
+      api.get<{ status: string }[]>('/admin/requests'),
+      api.get<{ status: string }[]>('/admin/leads').catch(() => []),
+    ]);
+    setN([...changes, ...requests, ...leads].filter((x) => x.status === 'new').length);
   }, []);
   useEffect(() => {
     void load().catch(() => {});
