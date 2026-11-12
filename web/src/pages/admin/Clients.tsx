@@ -1,20 +1,22 @@
-// Клиенты: завести семью с почтой родителя, место по адресу и поездку. Этого достаточно,
-// чтобы после свайпа водителя «Передал» родителю ушло письмо «ребёнок на месте» на Яндекс Почту.
+// Семьи: поиск и список; «+ Семья» — в нижней панели. Всё остальное о семье — в её карточке.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
-import { useToast } from '../../components/ui';
+import { useToast, Sheet, Skeleton } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { localDate, WEEKDAYS_SHORT, weekday } from '@shared/time';
 import { formatRule } from '@shared/recurrence';
 import { formatPhone } from '@shared/phone';
+import { plural } from '@shared/ru';
+import { Clock } from '../../components/Clock';
+import { DeskNav } from './DeskNav';
 
 export interface Family {
   id: string;
   name: string;
   members: { userId: string; name: string; phone: string | null; email: string | null; yandex: boolean; relation: string; isOwner: boolean }[];
   children: { id: string; firstName: string; grade: string | null }[];
-  templates: { id: string; time: string; ruleText: string; priceRub: number; childId: string }[];
+  templates: { id: string; time: string; ruleText: string; priceRub: number; childId: string; driverId: string | null }[];
 }
 export interface Place {
   id: string;
@@ -27,30 +29,17 @@ interface Pending {
   phone: string | null;
   email: string | null;
 }
-interface Status {
-  provider: string;
-  testMode: boolean;
-  mail: string;
-  mailFrom: string;
-  yandex: boolean;
-  demo: boolean;
-}
 export function Clients() {
-  const lite = !!useAuth().me?.lite;
-  const [families, setFamilies] = useState<Family[]>([]);
+  const [families, setFamilies] = useState<Family[] | null>(null);
   const [pending, setPending] = useState<Pending[]>([]);
-  const [status, setStatus] = useState<Status | null>(null);
+  const [q, setQ] = useState('');
+  const [adding, setAdding] = useState(false);
   const toast = useToast();
 
   const load = useCallback(async () => {
-    const [f, u, s] = await Promise.all([
-      api.get<Family[]>('/admin/families'),
-      api.get<Pending[]>('/admin/pending-users'),
-      api.get<Status>('/admin/sms'),
-    ]);
+    const [f, u] = await Promise.all([api.get<Family[]>('/admin/families'), api.get<Pending[]>('/admin/pending-users')]);
     setFamilies(f);
     setPending(u);
-    setStatus(s);
   }, []);
   useEffect(() => {
     void load();
@@ -68,323 +57,85 @@ export function Clients() {
     }
   };
 
-  return (
-    <div className="desk" style={{ gridTemplateColumns: '210px 1fr' }}>
-      <nav className="desk-nav">
-        <div className="wordmark">
-          НА<i />МЕСТЕ
-        </div>
-        <Link to="/admin">Диспетчерская</Link>
-        <a className="active">Клиенты</a>
-        <Link to="/admin/chat">Сообщения</Link>
-      </nav>
-      <main className="desk-main" style={{ maxWidth: 980 }}>
-        <h1 className="page-title">Клиенты</h1>
+  // ищем по названию семьи, детям, взрослым и телефону
+  const needle = q.trim().toLowerCase();
+  const shown = (families ?? []).filter(
+    (f) => !needle || [f.name, ...f.children.map((c) => c.firstName), ...f.members.flatMap((m) => [m.name, m.phone ?? ''])].some((x) => x.toLowerCase().includes(needle)),
+  );
 
-        {status && (
-          <div className="kpis">
-            <span className="kpi">
-              письма на почту<b>{status.mail === 'none' ? 'выключены' : status.mail === 'log' ? 'проверка без отправки' : `включены · ${status.mailFrom}`}</b>
-            </span>
-            {status.provider !== 'none' && (
-              <span className="kpi">
-                SMS<b>{status.provider === 'log' ? 'проверка без отправки' : `${status.provider === 'yandex' ? 'Яндекс' : 'sms.ru'}, ${status.testMode ? 'тест' : 'боевой'}`}</b>
-              </span>
-            )}
-            <span className="kpi">
-              вход через Яндекс<b>{status.yandex ? 'включён' : 'не настроен'}</b>
-            </span>
-            <span className="kpi">
-              демо-режим<b>{status.demo ? 'включён' : 'выключен'}</b>
-            </span>
-          </div>
-        )}
-        <MailTest run={run} />
+  return (
+    <div className="desk desk-2">
+      <DeskNav />
+      <main className="desk-main" style={{ maxWidth: 820 }}>
+        <div className="page-head">
+          <Clock />
+          <h1 className="page-title" style={{ flex: 1 }}>
+            Семьи
+          </h1>
+          <button className="btn small" onClick={() => setAdding(true)}>
+            + Семья
+          </button>
+        </div>
 
         {pending.length > 0 && (
-          <section style={{ display: 'grid', gap: 8 }}>
-            <h3>Вошли через Яндекс и ждут семью</h3>
+          <section className="fc-block">
+            <div className="fc-head">
+              <h3>Вошли через Яндекс и ждут семью</h3>
+            </div>
             {pending.map((u) => (
-              <Attach key={u.id} user={u} families={families} run={run} />
+              <Attach key={u.id} user={u} families={families ?? []} run={run} />
             ))}
           </section>
         )}
 
-        <People />
-        <NewFamily run={run} />
+        <input className="input" type="search" placeholder="Поиск: семья, ребёнок, родитель или телефон" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Поиск семьи" />
 
-        <section style={{ display: 'grid', gap: 8 }}>
-          <h3>Семьи</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Семья</th>
-                <th>Взрослые</th>
-                <th>Дети</th>
-                <th>Поездки по расписанию</th>
-              </tr>
-            </thead>
-            <tbody>
-              {families.map((f) => (
-                <tr key={f.id}>
-                  <td>
+        {!families ? (
+          <Skeleton rows={4} />
+        ) : shown.length ? (
+          <ul className="list">
+            {shown.map((f) => (
+              <li key={f.id}>
+                <Link to={`/admin/clients/${f.id}`} className="fc-row fc-link">
+                  <span className="fc-main">
                     <b>{f.name}</b>
-                    <br />
-                    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                      <Link to={`/admin/clients/${f.id}`} className="btn small">
-                        Открыть карточку
-                      </Link>
-                      <Link to={`/admin/chat?thread=${encodeURIComponent(`family:${f.id}`)}`} className="btn small secondary">
-                        Написать
-                      </Link>
-                    </span>
-                  </td>
-                  <td>
-                    {f.members.map((m) => (
-                      <MemberRow key={m.userId} m={m} run={run} />
-                    ))}
-                  </td>
-                  <td>{f.children.map((c) => c.firstName).join(', ') || '—'}</td>
-                  <td>
-                    {f.templates.map((t) => (
-                      <div key={t.id}>
-                        {t.time} {f.children.find((c) => c.id === t.childId)?.firstName} · {t.ruleText}{lite ? '' : ` · ${t.priceRub} ₽`}
-                      </div>
-                    ))}
-                    {!f.templates.length && '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+                    <small>
+                      {[f.children.map((c) => c.firstName).join(', ') || 'детей нет', f.templates.length ? `${f.templates.length} ${plural(f.templates.length, ['поездка', 'поездки', 'поездок'])} по расписанию` : 'поездок нет', f.members.map((m) => m.name).join(', ')].join(' · ')}
+                    </small>
+                  </span>
+                  <span className="tile-chevron" aria-hidden>
+                    ›
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="card empty" style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
+            {needle ? 'Никого не нашли — проверьте написание.' : 'Семей пока нет.'}
+            {!needle && (
+              <button className="btn" onClick={() => setAdding(true)}>
+                Добавить первую семью
+              </button>
+            )}
+          </div>
+        )}
       </main>
+      <Sheet open={adding} onClose={() => setAdding(false)}>
+        <NewFamily
+          run={async (fn, ok) => {
+            const done = await run(fn, ok);
+            if (done) setAdding(false);
+            return done;
+          }}
+        />
+      </Sheet>
       {toast.node}
     </div>
   );
 }
 
 export type Run = (fn: () => Promise<unknown>, ok: string) => Promise<boolean>;
-
-interface Person {
-  id: string;
-  name: string;
-  roles: string[];
-  phone: string | null;
-  email: string | null;
-  yandex: boolean;
-  families: string[];
-  lastLogin: string | null;
-}
-
-const ROLE_RU: Record<string, string> = { dispatcher: 'диспетчер', driver: 'водитель', parent: 'родитель' };
-
-/** Выдать код входа любому человеку, если вход через Яндекс не получается. Код: 8 цифр, 3 дня, 2 входа. */
-function People() {
-  const [people, setPeople] = useState<Person[]>([]);
-  const [codes, setCodes] = useState<Record<string, { code: string; link: string }>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const { me } = useAuth();
-  const load = useCallback(() => {
-    api.get<Person[]>('/admin/people').then(setPeople).catch((e) => setError((e as Error).message));
-  }, []);
-  useEffect(load, [load]);
-  const [staffName, setStaffName] = useState('');
-  const [staffRole, setStaffRole] = useState<'driver' | 'dispatcher'>('driver');
-  const [staffPhone, setStaffPhone] = useState('');
-  const addStaff = async () => {
-    try {
-      await api.post('/admin/staff', { name: staffName, role: staffRole, phone: staffPhone || undefined });
-      setStaffName('');
-      setStaffPhone('');
-      setError(null);
-      load();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-
-  const issue = async (id: string) => {
-    setError(null);
-    try {
-      const r = await api.post<{ code: string; link: string }>(`/admin/users/${id}/invite`);
-      setCodes((c) => ({ ...c, [id]: r }));
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-  const copy = async (id: string, text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(id);
-    } catch {
-      setCopied(null);
-    }
-  };
-
-  return (
-    <section id="access" style={{ display: 'grid', gap: 8 }}>
-      <h3>Доступ и коды входа</h3>
-      <div className="note plain">
-        Если у человека не получается войти через Яндекс, выдайте ему код. Он действует 3 дня и подходит для двух входов. Человек вводит его на странице входа в поле «код из приглашения». Новый код отменяет прежний.
-      </div>
-      {error && <div className="note error">{error}</div>}
-      <div className="card" style={{ padding: 14, display: 'grid', gap: 8 }}>
-        <b>Добавить сотрудника</b>
-        <div className="btn-row" style={{ flexWrap: 'wrap', alignItems: 'end' }}>
-          <div className="field">
-            <label htmlFor="st-name">Имя</label>
-            <input id="st-name" className="input" value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Иван Петров" />
-          </div>
-          <div className="field">
-            <label htmlFor="st-phone">Телефон</label>
-            <input id="st-phone" className="input" value={staffPhone} onChange={(e) => setStaffPhone(e.target.value)} placeholder="+7 921 000-00-00" />
-          </div>
-          <div className="field">
-            <label htmlFor="st-role">Кто</label>
-            <select id="st-role" className="input" value={staffRole} onChange={(e) => setStaffRole(e.target.value as 'driver' | 'dispatcher')}>
-              <option value="driver">водитель</option>
-              <option value="dispatcher">диспетчер</option>
-            </select>
-          </div>
-          <button className="btn" disabled={staffName.trim().length < 2} onClick={addStaff}>
-            Добавить
-          </button>
-        </div>
-        <small className="page-sub">После добавления нажмите «Выдать код» в таблице ниже и отправьте код человеку.</small>
-      </div>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Кто</th>
-            <th>Роль</th>
-            <th>Вход</th>
-            <th>Код</th>
-          </tr>
-        </thead>
-        <tbody>
-          {people.map((p) => (
-            <tr key={p.id}>
-              <td>
-                <b>{p.name}</b>
-                <br />
-                <small className="page-sub">{[p.phone ? formatPhone(p.phone) : null, p.email, ...p.families].filter(Boolean).join(' · ') || '—'}</small>
-              </td>
-              <td>{p.roles.map((r) => ROLE_RU[r] ?? r).join(', ')}</td>
-              <td>
-                {p.yandex ? <span className="tag tone-ok">Яндекс</span> : <span className="tag tone-plan">без Яндекса</span>}
-                <br />
-                <small className="page-sub">{p.lastLogin ? `заходил ${new Date(p.lastLogin).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'ещё не заходил'}</small>
-              </td>
-              <td>
-                {codes[p.id] ? (
-                  <span style={{ display: 'grid', gap: 4 }}>
-                    <b className="mono" style={{ fontSize: 20, letterSpacing: '0.12em', userSelect: 'all' }}>
-                      {codes[p.id].code}
-                    </b>
-                    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className="btn small secondary" onClick={() => copy(p.id, codes[p.id].code)}>
-                        {copied === p.id ? 'Скопировано' : 'Скопировать код'}
-                      </button>
-                      <button className="btn small secondary" onClick={() => copy(p.id + 'l', codes[p.id].link)}>
-                        {copied === p.id + 'l' ? 'Скопировано' : 'Скопировать ссылку'}
-                      </button>
-                    </span>
-                  </span>
-                ) : (
-                  <button className="btn small" onClick={() => issue(p.id)}>
-                    Выдать код
-                  </button>
-                )}
-                {p.id !== me?.id && (
-                  <button
-                    className="btn small danger"
-                    style={{ marginLeft: 6 }}
-                    onClick={async () => {
-                      if (!window.confirm(`Отключить вход для «${p.name}»? Все его устройства сразу выйдут, коды погаснут.`)) return;
-                      try {
-                        await api.post(`/admin/users/${p.id}/revoke`);
-                        setCodes((c) => ({ ...c, [p.id]: undefined as never }));
-                        setError(null);
-                        load();
-                      } catch (e) {
-                        setError((e as Error).message);
-                      }
-                    }}
-                  >
-                    Отключить вход
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-          {!people.length && (
-            <tr>
-              <td colSpan={4} className="page-sub">
-                Пока никого нет
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </section>
-  );
-}
-
-function MailTest({ run }: { run: Run }) {
-  const [email, setEmail] = useState('');
-  return (
-    <form
-      className="card"
-      style={{ padding: 14, display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}
-      onSubmit={(e) => {
-        e.preventDefault();
-        void run(async () => {
-          const r = await api.post<{ ok: boolean; error?: string }>('/admin/mail/test', { email });
-          if (!r.ok) throw new ApiError(400, `Письмо не ушло: ${r.error}`);
-        }, 'Проверочное письмо отправлено');
-      }}
-    >
-      <div className="field" style={{ flex: 1, minWidth: 220 }}>
-        <label htmlFor="mail-test">Проверить письма: адрес почты</label>
-        <input id="mail-test" type="email" className="input" placeholder="name@yandex.ru" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <button className="btn" disabled={!email.includes('@')}>
-        Отправить проверочное
-      </button>
-    </form>
-  );
-}
-
-export function MemberRow({ m, run }: { m: Family['members'][number]; run: Run }) {
-  const [edit, setEdit] = useState(false);
-  const [email, setEmail] = useState(m.email ?? '');
-  return (
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
-      <span>
-        {m.name} ({m.relation}){m.phone ? ` · ${formatPhone(m.phone)}` : ''}
-      </span>
-      {m.yandex && <span className="tag tone-ok">Яндекс привязан</span>}
-      {edit ? (
-        <>
-          <input className="input" style={{ minHeight: 32, width: 200, fontSize: 14 }} type="email" aria-label="Почта" placeholder="name@yandex.ru" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button className="btn small" onClick={async () => (await run(() => api.post(`/admin/users/${m.userId}/contacts`, { email }), 'Почта сохранена')) && setEdit(false)}>
-            Сохранить
-          </button>
-        </>
-      ) : m.email ? (
-        <button className="tag tone-plan" style={{ border: 0, cursor: 'pointer' }} onClick={() => setEdit(true)} title="Изменить почту">
-          {m.email}
-        </button>
-      ) : (
-        <button className="tag tone-warn" style={{ border: 0, cursor: 'pointer' }} onClick={() => setEdit(true)}>
-          нет почты — письмо не уйдёт · добавить
-        </button>
-      )}
-    </div>
-  );
-}
 
 function Attach({ user, families, run }: { user: Pending; families: Family[]; run: Run }) {
   const [familyId, setFamilyId] = useState('');
@@ -482,6 +233,25 @@ function NewFamily({ run }: { run: Run }) {
   );
 }
 
+export interface DriverOption {
+  id: string;
+  name: string;
+  car: string | null;
+  plate: string | null;
+  main: boolean;
+}
+
+/** Водители для выбора «кто везёт»; первый — основной. */
+export function useDrivers() {
+  const [drivers, setDrivers] = useState<DriverOption[]>([]);
+  useEffect(() => {
+    api.get<DriverOption[]>('/admin/drivers').then(setDrivers).catch(() => setDrivers([]));
+  }, []);
+  return drivers;
+}
+
+export const driverLabel = (d: DriverOption) => [d.name, d.car, d.plate].filter(Boolean).join(' · ') + (d.main ? ' (основной)' : '');
+
 export function NewTemplate({ families, places, run, fixedFamilyId }: { families: Family[]; places: Place[]; run: Run; fixedFamilyId?: string }) {
   const lite = !!useAuth().me?.lite;
   const [familyId, setFamilyId] = useState(fixedFamilyId ?? '');
@@ -493,6 +263,8 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
   const [once, setOnce] = useState(false);
   const [days, setDays] = useState<number[]>([]);
   const [price, setPrice] = useState(1000);
+  const drivers = useDrivers();
+  const [driverId, setDriverId] = useState('');
   const family = families.find((f) => f.id === familyId);
   const rule = once ? 'ONCE' : formatRule({ freq: 'WEEKLY', interval: 1, byDay: days.length ? days : [weekday(date)] });
   return (
@@ -551,6 +323,18 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
           <label htmlFor="nt-time">Забрать в</label>
           <input id="nt-time" type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
+        {drivers.length > 1 && (
+          <div className="field">
+            <label htmlFor="nt-driver">Кто везёт</label>
+            <select id="nt-driver" className="input" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
+              {drivers.map((d) => (
+                <option key={d.id} value={d.main ? '' : d.id}>
+                  {driverLabel(d)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {!lite && (
           <div className="field">
             <label htmlFor="nt-price">Цена, ₽</label>
@@ -574,13 +358,19 @@ export function NewTemplate({ families, places, run, fixedFamilyId }: { families
       </div>
       <button
         className="btn"
-        disabled={!familyId || !childId || !from || !to || from === to}
-        onClick={() =>
-          run(async () => {
-            await api.post('/admin/templates', { familyId, childId, fromPlaceId: from, toPlaceId: to, time, rule, startDate: date, ...(lite ? {} : { priceRub: price }) });
+        disabled={!familyId || !childId || !from || !to || from === to || !time}
+        onClick={async () => {
+          const added = await run(async () => {
+            await api.post('/admin/templates', { familyId, childId, fromPlaceId: from, toPlaceId: to, time, rule, startDate: date, driverId: driverId || undefined, ...(lite ? {} : { priceRub: price }) });
             await api.post(`/admin/days/${date}/plan`);
-          }, 'Поездка добавлена в расписание')
-        }
+          }, `Поездка ${time} добавлена. Форма готова для обратной поездки — укажите время.`);
+          // после добавления форма сразу готова для обратной дороги: адреса меняются местами, время пустое
+          if (added) {
+            setFrom(to);
+            setTo(from);
+            setTime('');
+          }
+        }}
       >
         Добавить поездку
       </button>

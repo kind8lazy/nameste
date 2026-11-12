@@ -5,6 +5,7 @@ import { homeFor, useAuth } from '../lib/auth';
 import type { Me } from '@shared/api';
 import { YandexCodeLogin } from '../components/YandexCodeLogin';
 import { isIOS, isStandalone } from '../lib/platform';
+import { IconCalendar, IconCar, IconChat } from '../components/Tiles';
 
 /** Текст ошибки выбирает приложение по коду — на странице входа нельзя показать произвольную «инструкцию». */
 const LOGIN_ERRORS: Record<string, string> = {
@@ -24,7 +25,7 @@ function safeNext(next: string | null): string | null {
 
 export function Login() {
   const [params] = useSearchParams();
-  const { me, setMe } = useAuth();
+  const { me, setMe, loading } = useAuth();
   const nav = useNavigate();
   const [code, setCode] = useState(params.get('code') ?? '');
   const [error, setError] = useState<string | null>(LOGIN_ERRORS[params.get('error') ?? ''] ?? null);
@@ -32,6 +33,7 @@ export function Login() {
   const [demo, setDemo] = useState(false);
   const demoTarget = useRef<string | null>(null);
   const [yandex, setYandex] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
   useEffect(() => {
     api.get<{ enabled: boolean }>('/auth/yandex').then((d) => setYandex(d.enabled)).catch(() => {});
   }, []);
@@ -52,47 +54,102 @@ export function Login() {
     if (me) nav(demoTarget.current || safeNext(params.get('next')) || homeFor(me), { replace: true });
   }, [me, nav, params]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const redeem = async (value: string) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const m = await api.post<Me>('/auth/redeem', { code });
+      const m = await api.post<Me>('/auth/redeem', { code: value });
       setMe(m);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не получилось войти');
+      setCode('');
     } finally {
       setBusy(false);
     }
   };
+  // ссылка-приглашение с кодом: входим сразу, без лишних нажатий
+  const autoTried = useRef(false);
+  // ждём, пока приложение узнает, вошёл ли человек, — иначе ответ «не вошёл» затрёт успешный вход
+  useEffect(() => {
+    const c = (params.get('code') ?? '').replace(/\D/g, '');
+    if (loading || me || autoTried.current || c.length < 6) return;
+    autoTried.current = true;
+    void redeem(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, me]);
+
+  const standalone = isStandalone();
+  // кодом входят те, у кого нет Яндекса или кто открыл ссылку-приглашение; остальным форма не мешает
+  const codeMode = codeOpen || !!params.get('code');
+  const yandexHref = `/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`;
+
+  if (codeMode)
+    return (
+      <CodeScreen
+        code={code}
+        setCode={(v) => {
+          setCode(v);
+          setError(null);
+          // набрали все 8 цифр — входим сами
+          if (v.length === 8) void redeem(v);
+        }}
+        busy={busy}
+        error={error}
+        onSubmit={() => void redeem(code)}
+        onBack={() => {
+          setCodeOpen(false);
+          setError(null);
+          if (params.get('code')) nav('/login', { replace: true });
+        }}
+        yandexHref={yandex && !(isIOS() && standalone) ? yandexHref : null}
+      />
+    );
 
   return (
-    <div className="app">
-      <div className="page" style={{ justifyContent: 'center', paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
-        <div className="live" style={{ padding: 22 }}>
-          <div className="wordmark" style={{ padding: 0 }}>
-            НА<i />МЕСТЕ
-          </div>
-          <div className="live-big">Развозка детей</div>
-          <div className="live-line">Где сейчас ребёнок — видно в реальном времени.</div>
+    <div className="welcome">
+      <header className="welcome-top">
+        <div className="wordmark" style={{ padding: 0, color: 'var(--navy)' }}>
+          НА<i />МЕСТЕ
         </div>
-        {yandex && (
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 10 }}>
-            <b>Вход через Яндекс ID</b>
-            {/* в приложении с экрана «Домой» на iPhone возврат из Яндекса не попадает обратно — там только вход по коду */}
-            {!(isIOS() && isStandalone()) && (
-              <a className="btn block" style={{ background: '#fc3f1d', color: '#fff' }} href={`/api/auth/yandex/start?next=${encodeURIComponent(safeNext(params.get('next')) ?? '/')}`}>
-                Войти через Яндекс
+        <nav>
+          <a href="#how">Как это работает</a>
+          <a href="#install">Установка</a>
+        </nav>
+      </header>
+
+      <section className="welcome-hero">
+        <div className="welcome-copy">
+          <span className="welcome-badge">
+            <i />
+            Развозка детей · Санкт-Петербург
+          </span>
+          <h1>
+            Ребёнок едет — <em>вы спокойны</em>
+          </h1>
+          <p>Водитель отмечает каждый шаг поездки, а вы сразу получаете уведомление: выехал, на месте, в машине, передан. Без звонков и переписок.</p>
+
+          <div className="welcome-login">
+            {yandex && !(isIOS() && standalone) && (
+              <a className="welcome-btn primary" href={yandexHref}>
+                Войти через Яндекс <span aria-hidden>→</span>
               </a>
             )}
-            <YandexCodeLogin
-              label={isIOS() && isStandalone() ? 'Войти через Яндекс' : 'Не получается? Войти по коду'}
-              onDone={(m) => setMe(m)}
-            />
+            <button type="button" className={`welcome-btn ${yandex ? 'ghost' : 'primary'}`} onClick={() => setCodeOpen(true)}>
+              {yandex ? 'У меня есть код приглашения' : 'Войти по коду'}
+            </button>
+            {yandex && <YandexCodeLogin label={isIOS() && standalone ? 'Войти через Яндекс' : 'Не получается? Войти по коду Яндекса'} onDone={(m) => setMe(m)} />}
+            {error && <div className="note error">{error}</div>}
           </div>
-        )}
-        {demo && (
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 10 }}>
+          <small className="welcome-note">Код присылает диспетчер.</small>
+        </div>
+
+        <PhoneScene />
+      </section>
+
+      {demo && (
+        <section className="welcome-section">
+          <div className="card" style={{ padding: 16, display: 'grid', gap: 10, maxWidth: 560 }}>
             <b>Демо-режим</b>
             <span className="page-sub">Войдите за любую роль без кода. Данные выдуманные: семья Маши и Лёвы.</span>
             <button className="btn block" onClick={() => demoLogin('parent', '/app')}>Родитель (мама)</button>
@@ -100,29 +157,236 @@ export function Login() {
             <button className="btn gold block" onClick={() => demoLogin('driver', '/driver')}>Водитель</button>
             <button className="btn secondary block" onClick={() => demoLogin('driver', '/admin')}>Диспетчер (компьютер)</button>
           </div>
-        )}
-        <form className="card" style={{ padding: 16, display: 'grid', gap: 12 }} onSubmit={submit}>
-          <div className="field">
-            <label htmlFor="code">Или код из приглашения диспетчера</label>
-            <input
-              id="code"
-              className="input code-input"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="00000000"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+        </section>
+      )}
+
+      <section className="welcome-section" id="how">
+        <h2>Как это работает</h2>
+        <div className="welcome-cards">
+          <Feature tone="gold" icon={<IconCar />} title="Каждый шаг поездки" text="Уведомления: водитель выехал, на месте, ребёнок в машине, передан взрослому." />
+          <Feature tone="navy" icon={<IconCalendar />} title="Неделя наперёд" text="Все поездки детей на одном экране. Изменить время или отменить — в пару нажатий." />
+          <Feature tone="green" icon={<IconChat />} title="Диспетчер на связи" text="Чат вместо звонков. Диспетчер подтверждает изменения — он знает, где свободны водители." />
+        </div>
+      </section>
+
+      {!standalone && (
+        <section className="welcome-section" id="install">
+          <h2>Установите на телефон</h2>
+          <p className="welcome-lead">Без магазина приложений. Уведомления придут, как от любого приложения.</p>
+          <div className="welcome-install">
+            <InstallCard
+              title="iPhone"
+              browser="в Safari"
+              steps={['Откройте эту страницу в Safari.', 'Нажмите «Поделиться» — квадрат со стрелкой внизу.', 'Выберите «На экран “Домой”».', 'Откройте приложение с экрана и войдите тем же способом.']}
+            />
+            <InstallCard
+              title="Android"
+              browser="в Chrome"
+              steps={['Откройте эту страницу в Chrome.', 'Нажмите ⋮ в правом верхнем углу.', 'Выберите «Установить приложение».', 'Откройте приложение с экрана и войдите.']}
             />
           </div>
-          {error && <div className="note error">{error}</div>}
-          <button className="btn block" disabled={busy || code.length < 6}>
-            {busy ? 'Проверяю…' : 'Войти'}
-          </button>
-          <p className="page-sub" style={{ margin: 0 }}>
-            Код присылает диспетчер НА МЕСТЕ. На iPhone сначала добавьте приложение на экран «Домой», потом войдите в нём — тем же кодом.
-          </p>
-        </form>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function Feature({ icon, title, text, tone }: { icon: React.ReactNode; title: string; text: string; tone: 'gold' | 'navy' | 'green' }) {
+  return (
+    <div className="welcome-card">
+      <span className={`welcome-card-icon tone-${tone}`}>{icon}</span>
+      <b>{title}</b>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+function InstallCard({ title, browser, steps }: { title: string; browser: string; steps: string[] }) {
+  return (
+    <div className="welcome-card">
+      <b>
+        {title} <small>{browser}</small>
+      </b>
+      <ol className="welcome-steps">
+        {steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Два телефона внахлёст с живой вёрсткой наших экранов: спереди — главная родителя, сзади — смена водителя. */
+function PhoneScene() {
+  return (
+    <div className="phone-scene" aria-hidden>
+      <div className="phone back">
+        <div className="phone-screen dark">
+          <StatusBar dark />
+          <div className="mock-pad">
+            <div className="mock-title light">Смена</div>
+            <div className="mock-days">
+              {['пн', 'вт', 'ср', 'чт', 'пт'].map((d, i) => (
+                <span key={d} className={i === 1 ? 'on' : ''}>
+                  <small>{d}</small>
+                  {3 + i}
+                </span>
+              ))}
+            </div>
+            <div className="mock-stop now">
+              <b>08:00 · Забрать</b>
+              <small>Дом → Школа · Дарья</small>
+              <span className="mock-swipe">Посадил Дарью →</span>
+            </div>
+            <div className="mock-stop">
+              <b>08:18 · Высадить</b>
+              <small>Школа, вход со двора</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="phone front">
+        <div className="phone-screen">
+          <StatusBar />
+          <div className="mock-pad">
+            <div className="mock-head">
+              <b>Запланированные поездки</b>
+              <i className="mock-plus">+</i>
+            </div>
+            <div className="mock-line">
+              <i /> <b>Сегодня:</b> Маша в машине, будет в 14:43
+            </div>
+            <div className="mock-week">
+              {['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d, i) => (
+                <span key={d} className={i === 1 ? 'on' : ''}>
+                  <small>{d}</small>
+                  {2 + i}
+                  <i>{i < 5 ? '•' : ''}</i>
+                </span>
+              ))}
+            </div>
+            <div className="mock-list">
+              <span>
+                <b>16:40</b> Маша · Теннис → Музыка
+              </span>
+              <span>
+                <b>17:30</b> Лёва · Школа → Дом
+              </span>
+            </div>
+          </div>
+          <div className="mock-tabbar">
+            <span>Профиль</span>
+            <span>Чат</span>
+          </div>
+        </div>
+      </div>
+      <div className="phone-toast">
+        <span className="tile-icon">
+          <IconCar />
+        </span>
+        <span>
+          <b>Маша в машине</b>
+          <small>14:23 · водитель Надежда</small>
+        </span>
       </div>
     </div>
   );
+}
+
+function StatusBar({ dark }: { dark?: boolean }) {
+  return (
+    <div className={`phone-status${dark ? ' dark' : ''}`}>
+      <span>9:41</span>
+      <i className="phone-island" />
+      <span className="phone-icons">●●● ▮</span>
+    </div>
+  );
+}
+
+/** Вход по коду: отдельный экран, 8 крупных ячеек, клавиатура цифр сразу, вход сам после 8-й цифры. */
+function CodeScreen({ code, setCode, busy, error, onSubmit, onBack, yandexHref }: { code: string; setCode: (v: string) => void; busy: boolean; error: string | null; onSubmit: () => void; onBack: () => void; yandexHref: string | null }) {
+  const input = useRef<HTMLInputElement>(null);
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
+  // фокус сразу и снова после проверки — клавиатура не закрывается после ошибки
+  useEffect(() => {
+    if (!busy) input.current?.focus();
+  }, [busy]);
+  return (
+    <div className="code-screen">
+      <header className="code-top">
+        <button type="button" className="back-btn" aria-label="Назад" onClick={onBack}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+        <div className="wordmark" style={{ padding: 0, color: 'var(--navy)' }}>
+          НА<i />МЕСТЕ
+        </div>
+      </header>
+      <form
+        className="code-body"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <h1>Вход по коду</h1>
+        <p>Введите цифры из сообщения диспетчера.</p>
+        <label className="otp" onClick={() => input.current?.focus()}>
+          <input
+            ref={input}
+            id="code"
+            className="otp-input"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="one-time-code"
+            aria-label="Код из приглашения"
+            value={code}
+            readOnly={busy}
+            onChange={(e) => setCode(extractCode(e.target.value))}
+            onPaste={(e) => {
+              // вставка целого сообщения «Код: 1234 5678 …» — берём из него только код
+              e.preventDefault();
+              setCode(extractCode(e.clipboardData.getData('text')));
+            }}
+          />
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i} className={`otp-cell${i === Math.min(code.length, 7) && !busy ? ' on' : ''}${code[i] ? ' filled' : ''}${error ? ' bad' : ''}`} aria-hidden>
+              {code[i] ?? ''}
+            </span>
+          ))}
+        </label>
+        {error ? <div className="note error">{error}</div> : <small className="code-hint">{busy ? 'Проверяю…' : 'Войдём сами после 8-й цифры'}</small>}
+        {!code && canPaste && (
+          <button
+            type="button"
+            className="welcome-btn ghost"
+            onClick={async () => {
+              try {
+                setCode(extractCode(await navigator.clipboard.readText()));
+              } catch {
+                input.current?.focus();
+              }
+            }}
+          >
+            Вставить скопированный код
+          </button>
+        )}
+        <button className="welcome-btn primary" disabled={busy || code.length < 6}>
+          {busy ? 'Проверяю…' : 'Войти'}
+        </button>
+        {yandexHref && (
+          <a className="code-alt" href={yandexHref}>
+            Нет кода? Войти через Яндекс
+          </a>
+        )}
+      </form>
+    </div>
+  );
+}
+
+/** Код из вставленного текста: пробелы, дефисы и слова вокруг не мешают. Сначала ищем отдельное число из 6–8 цифр. */
+export function extractCode(text: string): string {
+  const run = text.match(/(?<!\d)\d[\d\s-]{4,14}\d(?!\d)/g)?.map((m) => m.replace(/\D/g, '')).find((d) => d.length >= 6 && d.length <= 8);
+  return (run ?? text.replace(/\D/g, '')).slice(0, 8);
 }

@@ -73,30 +73,68 @@ export function planStops(rides: PlanRide[], travel: (a: LatLon, b: LatLon) => n
   return out;
 }
 
-/** Пересобрать рейс на дату, пока он не начат. Возвращает id рейса и конфликты по времени. */
-export function planDay(date: string): { runId: string | null; late: { placeId: string; plannedAt: string; lateMin: number }[] } {
+type Late = { placeId: string; plannedAt: string; lateMin: number };
+
+/** Основной водитель: везёт всё, что не назначено другому. Водитель-диспетчер (владелец), иначе первый. */
+export function defaultDriverId(): string | null {
+  const drivers = db.select().from(schema.drivers).all();
+  if (!drivers.length) return null;
+  const dispatchers = new Set(
+    db
+      .select()
+      .from(schema.users)
+      .where(inArray(schema.users.id, drivers.map((d) => d.userId)))
+      .all()
+      .filter((u) => u.roles.includes('dispatcher'))
+      .map((u) => u.id),
+  );
+  return (drivers.find((d) => dispatchers.has(d.userId)) ?? drivers[0]).userId;
+}
+
+/**
+ * Пересобрать рейсы на дату: у каждого водителя свой рейс со своими детьми.
+ * Начатый рейс не перестраивается — новые поездки этого водителя добавляются в него.
+ */
+export function planDay(date: string): { runId: string | null; late: Late[] } {
+  const drivers = new Map(db.select().from(schema.drivers).all().map((d) => [d.userId, d]));
+  const fallback = defaultDriverId();
+  if (!fallback) return { runId: null, late: [] };
   const existing = db.select().from(schema.runs).where(eq(schema.runs.date, date)).all();
-  const started = existing.find((r) => r.status !== 'planned');
-  if (started) return appendToStartedRun(started.id, date);
+  const startedRuns = existing.filter((r) => r.status !== 'planned');
+  const planned = existing.filter((r) => r.status === 'planned');
+
+  // старые неначатые рейсы убираем — план собирается заново
+  if (planned.length) {
+    db.update(schema.rides)
+      .set({ runId: null, pickupStopId: null, dropoffStopId: null })
+      .where(inArray(schema.rides.runId, planned.map((r) => r.id)))
+      .run();
+    db.delete(schema.runs).where(inArray(schema.runs.id, planned.map((r) => r.id))).run();
+  }
 
   const rides = db
     .select()
     .from(schema.rides)
-    .where(and(eq(schema.rides.date, date), ne(schema.rides.status, 'cancelled')))
+    .where(and(eq(schema.rides.date, date), isNull(schema.rides.runId), ne(schema.rides.status, 'cancelled')))
     .all();
-  const driver = db.select().from(schema.drivers).all()[0];
-  if (!driver) return { runId: null, late: [] };
-
-  // старые точки и привязки убираем — план собирается заново
-  if (existing.length) {
-    db.update(schema.rides)
-      .set({ runId: null, pickupStopId: null, dropoffStopId: null })
-      .where(inArray(schema.rides.runId, existing.map((r) => r.id)))
-      .run();
-    db.delete(schema.runs).where(inArray(schema.runs.id, existing.map((r) => r.id))).run();
+  const byDriver = new Map<string, typeof rides>();
+  for (const r of rides) {
+    const d = r.driverId && drivers.has(r.driverId) ? r.driverId : fallback;
+    byDriver.set(d, [...(byDriver.get(d) ?? []), r]);
   }
-  if (!rides.length) return { runId: null, late: [] };
 
+  let firstRunId: string | null = startedRuns[0]?.id ?? null;
+  const late: Late[] = [];
+  for (const [driverId, own] of byDriver) {
+    const started = startedRuns.find((r) => r.driverId === driverId);
+    const res = started ? appendToStartedRun(started.id, own) : buildRun(date, drivers.get(driverId)!, own);
+    firstRunId ??= res.runId;
+    late.push(...res.late);
+  }
+  return { runId: firstRunId, late };
+}
+
+function buildRun(date: string, driver: typeof schema.drivers.$inferSelect, rides: (typeof schema.rides.$inferSelect)[]): { runId: string; late: Late[] } {
   const placeIds = [...new Set(rides.flatMap((r) => [r.fromPlaceId, r.toPlaceId]))];
   const places = new Map(db.select().from(schema.places).where(inArray(schema.places.id, placeIds)).all().map((p) => [p.id, p]));
   const plan = planStops(
@@ -131,18 +169,13 @@ export function planDay(date: string): { runId: string | null; late: { placeId: 
  * Рейс уже идёт: новые поездки дня вставляем в него, не трогая пройденные точки.
  * Точки, которые ещё впереди, переупорядочиваем по плановому времени.
  */
-function appendToStartedRun(runId: string, date: string) {
-  const fresh = db
-    .select()
-    .from(schema.rides)
-    .where(and(eq(schema.rides.date, date), isNull(schema.rides.runId), ne(schema.rides.status, 'cancelled')))
-    .all();
-  if (!fresh.length) return { runId, late: [] as { placeId: string; plannedAt: string; lateMin: number }[] };
+function appendToStartedRun(runId: string, fresh: (typeof schema.rides.$inferSelect)[]) {
+  if (!fresh.length) return { runId, late: [] as Late[] };
   const run = db.select().from(schema.runs).where(eq(schema.runs.id, runId)).get()!;
   if (run.status === 'done') db.update(schema.runs).set({ status: 'active', finishedAt: null }).where(eq(schema.runs.id, runId)).run();
   const placeIds = [...new Set(fresh.flatMap((r) => [r.fromPlaceId, r.toPlaceId]))];
   const places = new Map(db.select().from(schema.places).where(inArray(schema.places.id, placeIds)).all().map((p) => [p.id, p]));
-  const late: { placeId: string; plannedAt: string; lateMin: number }[] = [];
+  const late: Late[] = [];
   db.transaction((tx) => {
     for (const r of fresh) {
       const from = places.get(r.fromPlaceId)!;

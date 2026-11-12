@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { groupTrips, tripState, currentTarget, type Trip } from '../lib/trips';
-import { Avatar, Steps, Tag } from '../components/ui';
+import { Avatar, Steps, Tag, Skeleton } from '../components/ui';
 import { MiniMap } from '../components/MiniMap';
 import { LiveFreshness } from '../components/LiveFreshness';
 import type { ParentDay } from '@shared/api';
 import { addMinutes, localTime } from '@shared/time';
+import { Clock } from '../components/Clock';
 
 export function Track() {
   const { token = '' } = useParams();
@@ -43,13 +44,14 @@ export function Track() {
     <div className="app">
       <main className="page" style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}>
         <div className="page-head">
+          <Clock />
           <div className="wordmark" style={{ padding: 0, color: 'var(--navy)' }}>
             НА<i />МЕСТЕ
           </div>
           <span className="page-sub">{day?.dayLabel}</span>
         </div>
         {error && !day && <div className="note error">{error}</div>}
-        {!day && !error && <div className="empty">Загрузка…</div>}
+        {!day && !error && <Skeleton />}
         {day && !featured && <div className="card empty">Сегодня поездок нет</div>}
         {day && featured && <TrackCard trip={featured} day={day} token={token} />}
         {day && trips.length > 1 && (

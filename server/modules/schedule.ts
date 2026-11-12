@@ -38,6 +38,7 @@ export function materialize(from = localDate(), to = addDays(localDate(), HORIZO
           arriveBy: t.arriveBy,
           escort: t.escort,
           priceRub: t.priceRub,
+          driverId: t.driverId,
         })
         .onConflictDoNothing()
         .run();

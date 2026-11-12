@@ -34,6 +34,7 @@ import { yandexAuthRoutes, sweepFlows } from './routes/yandex-auth';
 import { trackerRoutes } from './routes/tracker';
 import { chatRoutes } from './routes/chat';
 import { adminEditRoutes } from './routes/admin-edit';
+import { leadRoutes } from './routes/leads';
 
 runMigrations();
 
@@ -124,6 +125,7 @@ await app.register(
     await api.register(trackerRoutes);
     await api.register(chatRoutes);
     await api.register(adminEditRoutes);
+    await api.register(leadRoutes);
   },
   { prefix: '/api' },
 );

@@ -65,6 +65,8 @@ export interface RideView {
   receiver: string | null;
   cancelReason: string | null;
   driver: DriverView | null;
+  /** просьба родителя, которая ждёт ответа диспетчера */
+  pending: { kind: 'cancel' | 'time'; time: string | null } | null;
 }
 
 export interface Position {

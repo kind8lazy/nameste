@@ -6,15 +6,16 @@ import { api } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { groupTrips, tripState, currentTarget, type Trip } from '../../lib/trips';
 import { phoneHref } from '../../lib/platform';
-import { Avatar, Steps, Tag, useToast } from '../../components/ui';
+import { Avatar, Steps, Tag, useToast, Skeleton, BackButton, EmptyState } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
-import { PushCard } from '../../components/PushCard';
 import { DemoCard } from '../../components/DemoCard';
 import { LiveFreshness } from '../../components/LiveFreshness';
 import { ShareTracking } from '../../components/ShareTracking';
 import { RideSheet } from './RideSheet';
 import type { ParentDay, Position, RideView } from '@shared/api';
 import { addMinutes, localTime } from '@shared/time';
+import { Clock } from '../../components/Clock';
+import { undoable } from './Requests';
 
 export function Today() {
   const [day, setDay] = useState<ParentDay | null>(null);
@@ -46,7 +47,7 @@ export function Today() {
   const others = trips.filter((t) => t !== featured);
 
   if (error && !day) return <div className="page"><div className="note error">{error}</div></div>;
-  if (!day) return <div className="page"><div className="empty">Загрузка…</div></div>;
+  if (!day) return <div className="page"><Skeleton /></div>;
 
   if (me && !me.families.length && !me.roles.includes('dispatcher')) {
     return (
@@ -63,8 +64,9 @@ export function Today() {
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
+        <BackButton to="/app" label="Главная" />
         <h1 className="page-title">Сегодня</h1>
-        <span className="page-sub">{day.dayLabel}</span>
       </div>
       {day.children.length > 0 && (
         <div className="kids">
@@ -77,7 +79,7 @@ export function Today() {
         </div>
       )}
 
-      {featured ? <TripCard trip={featured} position={position} onOpen={() => setSheet(featured.rides)} /> : !trips.length && <div className="card empty">Сегодня поездок нет. Расписание — во вкладке «Неделя».</div>}
+      {featured ? <TripCard trip={featured} position={position} onOpen={() => setSheet(featured.rides)} /> : !trips.length && <EmptyState text="Сегодня поездок нет." action={canOrder ? 'Заказать поездку' : undefined} to="/app/new" />}
 
       {others.length > 0 && (
         <>
@@ -104,19 +106,8 @@ export function Today() {
         </>
       )}
       {!lite && day.rides.length > 0 && <ShareTracking />}
-      <PushCard compact />
       {!lite && <DemoCard />}
-      <div className="btn-row">
-        {canOrder && (
-          <Link to="/app/new" className="btn gold">
-            + Новая поездка
-          </Link>
-        )}
-        <Link to="/app/week" className="btn secondary">
-          Вся неделя
-        </Link>
-      </div>
-      <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={(m) => { toast.show(m); void load(); }} />
+      <RideSheet rides={sheet} onClose={() => setSheet(null)} onDone={undoable(toast, () => void load())} />
       {toast.node}
     </main>
   );

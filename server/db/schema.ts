@@ -168,6 +168,8 @@ export const rideTemplates = sqliteTable(
     endDate: text('end_date'),
     escort: text('escort').$type<Escort>().notNull().default('to_door'),
     priceRub: integer('price_rub').notNull(),
+    /** кто возит; пусто — основной водитель */
+    driverId: text('driver_id').references(() => users.id, { onDelete: 'set null' }),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
     createdAt: createdAt(),
   },
@@ -253,6 +255,8 @@ export const rides = sqliteTable(
     escort: text('escort').$type<Escort>().notNull().default('to_door'),
     priceRub: integer('price_rub').notNull(),
     status: text('status').$type<RideStatus>().notNull().default('planned'),
+    /** кто везёт; пусто — основной водитель */
+    driverId: text('driver_id').references(() => users.id, { onDelete: 'set null' }),
     runId: text('run_id').references(() => runs.id, { onDelete: 'set null' }),
     pickupStopId: text('pickup_stop_id').references(() => stops.id, { onDelete: 'set null' }),
     dropoffStopId: text('dropoff_stop_id').references(() => stops.id, { onDelete: 'set null' }),
@@ -424,4 +428,70 @@ export const chatReads = sqliteTable(
     readAt: integer('read_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.thread] })],
+);
+
+/**
+ * Просьбы родителей изменить уже запланированное: отменить поездку, перенести время, «ребёнка не будет».
+ * Ничего не меняется, пока диспетчер не примет: только он знает, что могут водители.
+ */
+export const changeRequests = sqliteTable(
+  'change_requests',
+  {
+    id: text('id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    requestedBy: text('requested_by')
+      .notNull()
+      .references(() => users.id),
+    kind: text('kind').$type<'cancel' | 'time' | 'absence' | 'place'>().notNull(),
+    /** у просьбы про адрес места ребёнка нет */
+    childId: text('child_id').references(() => children.id, { onDelete: 'cascade' }),
+    /** для смены адреса — какое место и новый адрес с координатами */
+    placeId: text('place_id').references(() => places.id, { onDelete: 'cascade' }),
+    address: text('address'),
+    lat: real('lat'),
+    lon: real('lon'),
+    /** для отмены и переноса — какая поездка */
+    rideId: text('ride_id').references(() => rides.id, { onDelete: 'cascade' }),
+    dateFrom: text('date_from').notNull(),
+    dateTo: text('date_to').notNull(),
+    /** для переноса — новое время забора; после «принять с правкой» — время, которое назначил диспетчер */
+    time: text('time'),
+    reason: text('reason'),
+    status: text('status').$type<'new' | 'accepted' | 'declined' | 'withdrawn'>().notNull().default('new'),
+    answer: text('answer'),
+    decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('changes_family').on(t.familyId), index('changes_status').on(t.status)],
+);
+
+/**
+ * Заявки новых семей из Телеграм-бота. Семьи в базе ещё нет — это контакт и пожелания своими словами;
+ * диспетчер перезванивает и заводит семью сам. Бот работает отдельно (сервер в России не достаёт до Телеграма)
+ * и присылает готовую заявку по секретному ключу.
+ */
+export const leads = sqliteTable(
+  'leads',
+  {
+    id: text('id').primaryKey(),
+    source: text('source').$type<'telegram'>().notNull().default('telegram'),
+    /** ключ заявки на стороне бота — повторная отправка той же заявки не создаёт дубль */
+    externalId: text('external_id').notNull(),
+    tgChatId: text('tg_chat_id'),
+    tgUsername: text('tg_username'),
+    name: text('name').notNull(),
+    phone: text('phone').notNull(),
+    children: text('children').notNull(),
+    fromText: text('from_text').notNull(),
+    toText: text('to_text').notNull(),
+    schedule: text('schedule').notNull(),
+    comment: text('comment'),
+    status: text('status').$type<'new' | 'done' | 'declined'>().notNull().default('new'),
+    note: text('note'),
+    decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('leads_external').on(t.source, t.externalId), index('leads_status').on(t.status)],
 );

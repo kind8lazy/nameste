@@ -25,8 +25,8 @@ function kvSet(key: string, value: string) {
 export function refreshSchedule() {
   const created = materialize();
   const today = localDate();
-  planDay(today);
-  planDay(addDays(today, 1));
+  // водитель видит смену на неделю вперёд, поэтому рейсы собираются на 7 дней
+  for (let i = 0; i < 7; i++) planDay(addDays(today, i));
   return created;
 }
 
@@ -54,7 +54,7 @@ export async function sendReminders(date: string) {
         fromPlace: g[0].from.name,
         toPlace: [...new Set(g.map((v) => v.to.name))].join(', '),
       }));
-    await notifyFamily(familyId, 'reminder', reminderMessage(lines), { tag: `reminder-${date}`, url: `/app/week?date=${date}` });
+    await notifyFamily(familyId, 'reminder', reminderMessage(lines), { tag: `reminder-${date}`, url: `/app?date=${date}` });
   }
 }
 

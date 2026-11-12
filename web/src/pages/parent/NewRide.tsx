@@ -1,13 +1,15 @@
-// Заявка на новую поездку или маршрут: кто, откуда, куда, когда, как часто. Цена видна сразу.
+// Заявка на новую поездку: кто, откуда, куда, когда. Частота и сопровождение уже выбраны и видны одной строкой —
+// «изменить» раскрывает их; комментарий — по ссылке. Цена видна сразу.
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
-import { Avatar } from '../../components/ui';
+import { Avatar, BackButton } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import type { ParentDay } from '@shared/api';
 import { addDays, localDate, WEEKDAYS_SHORT, weekday } from '@shared/time';
 import { formatRule } from '@shared/recurrence';
 import { plural, TRIPS } from '@shared/ru';
+import { Clock } from '../../components/Clock';
 
 interface Place {
   id: string;
@@ -34,12 +36,16 @@ export function NewRide() {
   const [fromAddr, setFromAddr] = useState('');
   const [to, setTo] = useState('');
   const [toAddr, setToAddr] = useState('');
-  const [date, setDate] = useState(nextWorkday());
-  const [time, setTime] = useState('14:20');
+  // «Заказать на этот день» из недели передаёт дату в адресе
+  const [date, setDate] = useState(() => { const d = new URLSearchParams(window.location.search).get('date'); return d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= localDate() ? d : nextWorkday(); });
+  // время не подставляем: раньше стояло 14:20 по умолчанию, и все заявки уходили с ним
+  const [time, setTime] = useState('');
   const [repeat, setRepeat] = useState<Repeat>('weekly');
   const [days, setDays] = useState<number[]>([weekday(nextWorkday())]);
   const [escort, setEscort] = useState<'to_door' | 'to_entrance'>('to_door');
   const [comment, setComment] = useState('');
+  const [more, setMore] = useState(false);
+  const [withComment, setWithComment] = useState(false);
   const [price, setPrice] = useState<{ perTrip: number; tripsIn4Weeks: number; total4Weeks: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,7 +84,7 @@ export function NewRide() {
         escort,
         comment: comment || null,
       });
-      nav('/app/week?sent=1', { replace: true });
+      nav('/app?sent=1', { replace: true });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не получилось отправить');
     } finally {
@@ -101,21 +107,24 @@ export function NewRide() {
     </>
   );
 
+  const dayNames = (days.length ? days : [weekday(date)]).map((d) => WEEKDAYS_SHORT[d - 1]).join(', ');
+  const summary = [repeat === 'once' ? 'Разово' : `${repeat === 'weekly' ? 'Каждую неделю' : 'Через неделю'}: ${dayNames}`, escort === 'to_door' ? 'до кабинета, передать взрослому' : 'до входа'].join(' · ');
   const same = !!from && from !== NEW && from === to;
-  const ready = kids.length && (from && (from !== NEW || fromAddr.trim())) && (to && (to !== NEW || toAddr.trim())) && !same;
+  const ready = kids.length && /^\d{2}:\d{2}$/.test(time) && (from && (from !== NEW || fromAddr.trim())) && (to && (to !== NEW || toAddr.trim())) && !same;
 
   return (
     <main className="page">
       <div className="page-head">
+        <Clock />
+        <BackButton to="/app" label="Отмена" />
         <h1 className="page-title">Новая поездка</h1>
-        <Link to="/app/week" className="page-sub">
-          Отмена
-        </Link>
       </div>
 
       {!places.length && (
         <div className="note">
-          Сначала добавьте адреса: дом, школу, секции. <Link to="/app/family">Добавить места в разделе «Семья»</Link>. Или выберите «Другой адрес…» и впишите его вручную.
+          <span>
+            Добавьте адреса в <Link to="/app/family?s=places">«Профиль → Места»</Link> или выберите «Другой адрес…».
+          </span>
         </div>
       )}
 
@@ -140,11 +149,11 @@ export function NewRide() {
       </div>
 
       <div className="field">
-        <label htmlFor="from">Откуда забрать</label>
+        <label htmlFor="from">Откуда</label>
         {placeSelect(from, setFrom, fromAddr, setFromAddr, 'from')}
       </div>
       <div className="field">
-        <label htmlFor="to">Куда отвезти</label>
+        <label htmlFor="to">Куда</label>
         {placeSelect(to, setTo, toAddr, setToAddr, 'to')}
       </div>
 
@@ -159,56 +168,64 @@ export function NewRide() {
         </div>
       </div>
 
-      <div className="field">
-        <label>Как часто</label>
-        <div className="pick">
-          {(
-            [
-              ['once', 'Разово'],
-              ['weekly', 'Каждую неделю'],
-              ['biweekly', 'Через неделю'],
-            ] as [Repeat, string][]
-          ).map(([v, l]) => (
-            <button key={v} type="button" className={repeat === v ? 'on' : ''} style={{ color: repeat === v ? undefined : 'inherit' }} onClick={() => setRepeat(v)}>
-              {l}
-            </button>
-          ))}
-        </div>
-        {repeat !== 'once' && (
-          <div className="pick">
-            {WEEKDAYS_SHORT.map((d, i) => (
-              <button
-                key={d}
-                type="button"
-                className={days.includes(i + 1) ? 'on' : ''}
-                style={{ color: days.includes(i + 1) ? undefined : 'inherit' }}
-                onClick={() => setDays((x) => (x.includes(i + 1) ? x.filter((y) => y !== i + 1) : [...x, i + 1].sort()))}
-              >
-                {d}
-              </button>
-            ))}
+      <p className="ride-summary">
+        {summary} ·{' '}
+        <button type="button" className="inline-link" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+          {more ? 'готово' : 'изменить'}
+        </button>
+      </p>
+      {more && (
+        <>
+          <div className="field">
+            <label>Как часто</label>
+            <div className="pick">
+              {(
+                [
+                  ['once', 'Разово'],
+                  ['weekly', 'Каждую неделю'],
+                  ['biweekly', 'Через неделю'],
+                ] as [Repeat, string][]
+              ).map(([v, l]) => (
+                <button key={v} type="button" className={repeat === v ? 'on' : ''} onClick={() => setRepeat(v)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            {repeat !== 'once' && (
+              <div className="pick">
+                {WEEKDAYS_SHORT.map((d, i) => (
+                  <button key={d} type="button" className={days.includes(i + 1) ? 'on' : ''} onClick={() => setDays((x) => (x.includes(i + 1) ? x.filter((y) => y !== i + 1) : [...x, i + 1].sort()))}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+          <div className="field">
+            <label>Сопровождение</label>
+            <div className="pick">
+              <button type="button" className={escort === 'to_door' ? 'on' : ''} onClick={() => setEscort('to_door')}>
+                До кабинета, передать взрослому
+              </button>
+              <button type="button" className={escort === 'to_entrance' ? 'on' : ''} onClick={() => setEscort('to_entrance')}>
+                До входа
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
-      <div className="field">
-        <label>Сопровождение</label>
-        <div className="pick">
-          <button type="button" className={escort === 'to_door' ? 'on' : ''} style={{ color: escort === 'to_door' ? undefined : 'inherit' }} onClick={() => setEscort('to_door')}>
-            До кабинета, передать взрослому
-          </button>
-          <button type="button" className={escort === 'to_entrance' ? 'on' : ''} style={{ color: escort === 'to_entrance' ? undefined : 'inherit' }} onClick={() => setEscort('to_entrance')}>
-            До входа
-          </button>
+      {withComment ? (
+        <div className="field">
+          <label htmlFor="comment">Комментарий диспетчеру</label>
+          <textarea id="comment" className="input" rows={3} style={{ paddingTop: 10 }} placeholder="Занятие до 16:30, выход через главный вход" value={comment} onChange={(e) => setComment(e.target.value)} autoFocus />
         </div>
-      </div>
+      ) : (
+        <button type="button" className="text-link gold" onClick={() => setWithComment(true)}>
+          + Комментарий диспетчеру
+        </button>
+      )}
 
-      <div className="field">
-        <label htmlFor="comment">Комментарий диспетчеру</label>
-        <textarea id="comment" className="input" rows={3} style={{ paddingTop: 10 }} placeholder="Например: занятие заканчивается в 16:30, выходит через главный вход" value={comment} onChange={(e) => setComment(e.target.value)} />
-      </div>
-
-      {lite && <div className="note plain">Диспетчер проверит время и подтвердит заявку.</div>}
       {price && (
         <div className="note">
           <b>
@@ -220,13 +237,12 @@ export function NewRide() {
               За 4 недели: {price.tripsIn4Weeks} {plural(price.tripsIn4Weeks, TRIPS)} ≈ {price.total4Weeks.toLocaleString('ru-RU')} ₽
             </span>
           )}
-          <span>Цена предварительная. Диспетчер проверит время и подтвердит.</span>
         </div>
       )}
       {same && <div className="note error">Откуда и куда — одно и то же место. Выберите разные.</div>}
       {error && <div className="note error">{error}</div>}
       <button className="btn block" disabled={!ready || busy} onClick={submit}>
-        {busy ? 'Отправляю…' : 'Отправить заявку'}
+        {busy ? 'Отправляю…' : time ? 'Отправить диспетчеру' : 'Укажите время'}
       </button>
     </main>
   );

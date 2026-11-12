@@ -15,10 +15,15 @@ import { registerServiceWorker } from './lib/push';
 import { Login } from './pages/Login';
 import { ParentLayout } from './pages/parent/Layout';
 import { Today } from './pages/parent/Today';
-import { Week } from './pages/parent/Week';
+import { Home as ParentHome } from './pages/parent/Home';
 import { Family } from './pages/parent/Family';
 import { NewRide } from './pages/parent/NewRide';
 import { Shift } from './pages/driver/Shift';
+import { DriverHome } from './pages/driver/Home';
+import { DispatcherHome } from './pages/admin/Home';
+import { Inbox } from './pages/admin/Inbox';
+import { Settings } from './pages/admin/Settings';
+import { Access } from './pages/admin/Access';
 import { Board } from './pages/admin/Board';
 import { Clients } from './pages/admin/Clients';
 import { FamilyCard } from './pages/admin/FamilyCard';
@@ -30,6 +35,11 @@ function Home() {
   const { me, loading } = useAuth();
   if (loading) return <div className="empty">Загрузка…</div>;
   return <Navigate to={me ? homeFor(me) : '/login'} replace />;
+}
+
+/** /app/week?date=… → /app?date=… — неделя теперь на главной родителя. */
+function WeekRedirect() {
+  return <Navigate to={`/app${window.location.search}`} replace />;
 }
 
 void registerServiceWorker();
@@ -50,14 +60,24 @@ createRoot(document.getElementById('root')!).render(
               </RequireRole>
             }
           >
-            <Route index element={<Today />} />
-            <Route path="week" element={<Week />} />
+            <Route index element={<ParentHome />} />
+            <Route path="today" element={<Today />} />
+            {/* старые ссылки из уведомлений: «Неделя» теперь на главной */}
+            <Route path="week" element={<WeekRedirect />} />
             <Route path="family" element={<Family />} />
             <Route path="new" element={<NewRide />} />
             <Route path="chat" element={<Chat />} />
           </Route>
           <Route
             path="/driver"
+            element={
+              <RequireRole roles={['driver']}>
+                <DriverHome />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/driver/shift"
             element={
               <RequireRole roles={['driver']}>
                 <Shift />
@@ -69,6 +89,38 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireRole roles={['dispatcher']}>
                 <Board />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/inbox"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <Inbox />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/access"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <Access />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <Settings />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/admin/m"
+            element={
+              <RequireRole roles={['dispatcher']}>
+                <DispatcherHome />
               </RequireRole>
             }
           />

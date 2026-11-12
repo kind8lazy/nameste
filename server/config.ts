@@ -26,6 +26,8 @@ export const config = {
   /** Представляемся бесплатным сервисам карт так, как требуют их правила. */
   userAgent: 'NaMeste/0.1 (child transport pilot, St Petersburg)',
   sessionDays: 180,
+  /** Секрет, с которым Телеграм-бот присылает заявки новых семей (POST /api/leads). Пусто — приём заявок от бота выключен. */
+  leadsSecret: process.env.LEADS_SECRET ?? '',
   /**
    * Простой режим: видны только имена детей, маршруты, календарь, имена родителей и сообщения.
    * Карта, слежение за машиной, цены, ссылка для близких и демо скрыты и на сервере закрыты.
@@ -72,6 +74,13 @@ export const config = {
     fromName: process.env.MAIL_FROM_NAME ?? 'НА МЕСТЕ',
     events: (process.env.MAIL_EVENTS ?? 'handed_over').split(',').map((x) => x.trim()).filter(Boolean),
   },
+  /**
+   * Постоянный мастер-код диспетчера: вход с любого устройства без Яндекса и без выдачи кода.
+   * Хранится только хеш: MASTER_CODE_SHA256 = sha256 от кода. Входит человек с телефоном MASTER_PHONE
+   * (если не задан — первый из ADMIN_PHONES), и только если у него есть роль диспетчера.
+   */
+  masterCodeHash: (process.env.MASTER_CODE_SHA256 ?? '').trim().toLowerCase(),
+  masterPhone: normalizePhone(process.env.MASTER_PHONE ?? '') ?? null,
   /** Телефоны, которые при первом входе через Яндекс получают роли диспетчера и водителя. */
   // «8 921…», «+7 921…» и «921…» — один и тот же номер
   adminPhones: (process.env.ADMIN_PHONES ?? '').split(',').map((x) => normalizePhone(x)).filter((x): x is string => !!x),

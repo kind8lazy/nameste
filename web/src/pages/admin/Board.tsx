@@ -1,55 +1,27 @@
-// Диспетчерская на компьютере: день по машинам, живая карта, семьи и коды входа, журнал уведомлений.
+// «Сегодня» на компьютере: рейсы дня по водителям и то, что ждёт решения диспетчера.
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useStream } from '../../lib/stream';
 import { useAuth } from '../../lib/auth';
-import { Avatar, Tag, useToast } from '../../components/ui';
+import { Avatar, Sheet, Tag, useToast, EmptyState } from '../../components/ui';
 import { MiniMap } from '../../components/MiniMap';
-import { Badge, useUnread } from '../../components/Chat';
 import { DemoCard } from '../../components/DemoCard';
-import { REQUEST_STATUS, type RequestRow } from '../parent/Requests';
-import type { AdminDay, Position } from '@shared/api';
+import { PendingList, useInbox } from './Inbox';
+import { DeskNav } from './DeskNav';
+import type { AdminDay, Position, RideView } from '@shared/api';
 import { addDays, localDate } from '@shared/time';
-
-interface FamilyRow {
-  id: string;
-  name: string;
-  members: { userId: string; name: string; relation: string; phone: string | null; push: boolean; isOwner: boolean }[];
-  children: { id: string; firstName: string; grade: string | null }[];
-  templates: { id: string; time: string; ruleText: string; priceRub: number }[];
-}
-
-interface NotificationRow {
-  id: string;
-  userName?: string;
-  title: string;
-  status: string;
-  channel: string;
-  createdAt: string;
-}
+import { Clock } from '../../components/Clock';
 
 export function Board() {
-  const { me, setMe } = useAuth();
+  const { me } = useAuth();
   const lite = !!me?.lite;
-  const unread = useUnread();
   const [date, setDate] = useState(localDate());
   const [day, setDay] = useState<AdminDay | null>(null);
-  const [families, setFamilies] = useState<FamilyRow[]>([]);
-  const [log, setLog] = useState<NotificationRow[]>([]);
-  const [codes, setCodes] = useState<Record<string, string>>({});
-  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [cancelRide, setCancelRide] = useState<RideView | null>(null);
   const toast = useToast();
 
   const load = useCallback(async () => {
-    const [d, f, n] = await Promise.all([
-      api.get<AdminDay>(`/admin/day?date=${date}`),
-      api.get<FamilyRow[]>('/admin/families'),
-      api.get<NotificationRow[]>('/admin/notifications'),
-    ]);
-    setDay(d);
-    setFamilies(f);
-    setLog(n);
-    setRequests(await api.get<RequestRow[]>('/admin/requests'));
+    setDay(await api.get<AdminDay>(`/admin/day?date=${date}`));
   }, [date]);
   useEffect(() => {
     void load();
@@ -69,47 +41,12 @@ export function Board() {
 
   return (
     <div className="desk">
-      <nav className="desk-nav">
-        <div className="wordmark">
-          НА<i />МЕСТЕ
-        </div>
-        <a className="active" href="#day">
-          Диспетчерская
-        </a>
-        <a href="/admin/clients">Клиенты: семьи, места, поездки</a>
-        <a href="/admin/chat">
-          Сообщения
-          <Badge n={unread} />
-        </a>
-        <a href="#requests">Заявки</a>
-        <a href="#families">Семьи и коды входа</a>
-        <a href="#log">Уведомления</a>
-        <a href="/driver">Моя смена (водитель)</a>
-        <a
-          href="#"
-          onClick={async (e) => {
-            e.preventDefault();
-            await api.post('/auth/logout');
-            setMe(null);
-          }}
-        >
-          Выйти ({me?.name})
-        </a>
-        <a
-          href="#"
-          onClick={async (e) => {
-            e.preventDefault();
-            await api.post('/auth/logout-all');
-            setMe(null);
-          }}
-        >
-          Выйти на всех устройствах
-        </a>
-      </nav>
+      <DeskNav />
 
       <main className="desk-main" id="day">
         <div className="page-head">
-          <h1 className="page-title">{day?.dayLabel ?? '…'}</h1>
+          <Clock />
+          <h1 className="page-title">{date === localDate() ? 'Сегодня' : (day?.dayLabel ?? '…')}</h1>
           <div className="btn-row" style={{ flex: 'none' }}>
             <button className="btn small secondary" onClick={() => setDate(addDays(date, -1))}>
               ‹
@@ -121,7 +58,8 @@ export function Board() {
               ›
             </button>
             <button
-              className="btn small"
+              className="btn small secondary"
+              title="Рейс пересобирается сам при любом изменении. Нажмите, чтобы проверить, успевает ли водитель по времени."
               onClick={async () => {
                 try {
                   const r = await api.post<{ late: { plannedAt: string; lateMin: number }[] }>(`/admin/days/${date}/plan`);
@@ -132,7 +70,7 @@ export function Board() {
                 void load();
               }}
             >
-              Пересобрать рейс
+              Проверить время
             </button>
           </div>
         </div>
@@ -166,14 +104,14 @@ export function Board() {
         {day?.runs.map((r) => (
           <section key={r.id} style={{ display: 'grid', gap: 8 }}>
             <h3>
-              {r.vehicle} · {r.plate} · {r.driverName}{' '}
-              <Tag tone={r.status === 'active' ? 'gold' : r.status === 'done' ? 'ok' : 'plan'}>{r.status === 'active' ? 'в пути' : r.status === 'done' ? 'завершён' : 'в плане'}</Tag>
+              {[r.driverName, r.vehicle, r.plate].filter(Boolean).join(' · ')}{' '}
+              {r.status !== 'planned' && <Tag tone={r.status === 'active' ? 'gold' : 'ok'}>{r.status === 'active' ? 'в пути' : 'завершён'}</Tag>}
             </h3>
             <table className="table">
               <thead>
                 <tr>
                   <th>План</th>
-                  <th>Факт / прогноз</th>
+                  {r.status !== 'planned' && <th>Факт / прогноз</th>}
                   <th>Точка</th>
                   <th>Дети</th>
                 </tr>
@@ -182,19 +120,31 @@ export function Board() {
                 {r.stops.map((s) => (
                   <tr key={s.id} style={{ opacity: s.doneAt ? 0.6 : 1, background: s.id === next?.id ? '#f3ead8' : undefined }}>
                     <td className="mono">{s.plannedAt}</td>
-                    <td className="mono">{s.doneAt ? `✓ ${s.doneAt}` : s.arrivedAt ? `на месте ${s.arrivedAt}` : s.eta ? `≈ ${s.eta}` : '—'}</td>
+                    {r.status !== 'planned' && <td className="mono">{s.doneAt ? `✓ ${s.doneAt}` : s.arrivedAt ? `на месте ${s.arrivedAt}` : s.eta ? `≈ ${s.eta}` : '—'}</td>}
                     <td>
                       <b>{s.kind === 'pickup' ? 'Забрать' : 'Высадить'}</b> · {s.place.name}
                     </td>
                     <td>
                       <div className="kids">
-                        {s.rides.map((x) => (
-                          <span key={x.id} className="kid-chip" style={{ fontSize: 13, opacity: x.status === 'cancelled' ? 0.5 : 1 }}>
-                            <Avatar child={x.child} size={20} />
-                            {x.child.firstName}
-                            <Tag tone={x.tone}>{x.statusLabel}</Tag>
-                          </span>
-                        ))}
+                        {s.rides.map((x) => {
+                          const chip = (
+                            <>
+                              <Avatar child={x.child} size={20} />
+                              {x.child.firstName}
+                              {x.status !== 'planned' && <Tag tone={x.tone}>{x.statusLabel}</Tag>}
+                            </>
+                          );
+                          // отменить можно, пока ребёнок не в машине; нажимаем на ребёнка в точке забора
+                          return s.kind === 'pickup' && CANCELLABLE.includes(x.status) ? (
+                            <button key={x.id} type="button" className="kid-chip" title="Отменить поездку" style={{ fontSize: 14, cursor: 'pointer', font: 'inherit' }} onClick={() => setCancelRide(x)}>
+                              {chip}
+                            </button>
+                          ) : (
+                            <span key={x.id} className="kid-chip" style={{ fontSize: 14, opacity: x.status === 'cancelled' ? 0.5 : 1 }}>
+                              {chip}
+                            </span>
+                          );
+                        })}
                       </div>
                     </td>
                   </tr>
@@ -203,7 +153,7 @@ export function Board() {
             </table>
           </section>
         ))}
-        {day && !day.runs.length && <div className="card empty">На этот день рейса нет</div>}
+        {day && !day.runs.length && <EmptyState text="На этот день поездок нет." action="Добавить поездку семье" to="/admin/clients" />}
         {day && day.unassigned.length > 0 && (
           <div className="note">
             <b>Без машины: {day.unassigned.length}</b>
@@ -218,109 +168,69 @@ export function Board() {
 
       <aside className="desk-side">
         {!lite && <DemoCard />}
-        <h3 id="requests">Заявки {requests.filter((r) => r.status === 'new').length ? `(${requests.filter((r) => r.status === 'new').length})` : ''}</h3>
-        {!requests.length && <div className="page-sub">Пока заявок нет</div>}
-        {requests.slice(0, 8).map((r) => (
-          <div key={r.id} className="card" style={{ padding: 12, display: 'grid', gap: 6, boxShadow: r.status === 'new' ? 'inset 3px 0 0 #B8964F' : undefined }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <b>
-                {r.time} {r.children.join(', ')}
-              </b>
-              <span className={`tag tone-${REQUEST_STATUS[r.status][0]}`}>{REQUEST_STATUS[r.status][1]}</span>
-            </div>
-            <small className="page-sub">
-              {r.familyName} · {r.from} → {r.to} · {r.ruleText}{lite ? '' : ` · ${r.priceRub.toLocaleString('ru-RU')} ₽`}
-            </small>
-            {r.comment && <small>«{r.comment}»</small>}
-            {r.status === 'new' && (
-              <div className="btn-row">
-                <button
-                  className="btn small"
-                  onClick={async () => {
-                    try {
-                      await api.post(`/admin/requests/${r.id}/accept`);
-                      toast.show('Принято: поездки добавлены в неделю семьи');
-                    } catch (e) {
-                      toast.show(e instanceof ApiError ? e.message : 'Не получилось');
-                    }
-                    void load();
-                  }}
-                >
-                  Принять
-                </button>
-                <button
-                  className="btn small secondary"
-                  onClick={async () => {
-                    await api.post(`/admin/requests/${r.id}/decline`, { answer: 'На это время машина занята. Напишем, как появится окно.' });
-                    toast.show('Семья получила ответ');
-                    void load();
-                  }}
-                >
-                  Нет окна
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-        <h3 id="families">Семьи</h3>
-        {families.map((f) => (
-          <div key={f.id} className="card" style={{ padding: 12, display: 'grid', gap: 8 }}>
-            <b>{f.name}</b>
-            <small className="page-sub">
-              Дети: {f.children.map((c) => c.firstName).join(', ') || '—'} · шаблонов: {f.templates.length}
-            </small>
-            {f.members.map((m) => (
-              <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 14 }}>
-                  {m.name} <small className="page-sub">({m.relation}{m.push ? ', уведомления вкл.' : ''})</small>
-                </span>
-                {codes[m.userId] ? (
-                  <b className="mono" style={{ userSelect: 'all', letterSpacing: '0.1em' }}>
-                    {codes[m.userId]}
-                  </b>
-                ) : (
-                  <button
-                    className="btn small secondary"
-                    onClick={async () => {
-                      const r = await api.post<{ code: string }>(`/admin/users/${m.userId}/invite`);
-                      setCodes((c) => ({ ...c, [m.userId]: r.code }));
-                    }}
-                  >
-                    Код входа
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
-        <h3 id="log">Уведомления</h3>
-        <div className="card" style={{ padding: 0, maxHeight: 360, overflow: 'auto' }}>
-          <table className="table" style={{ border: 0 }}>
-            <tbody>
-              {log.slice(0, 30).map((n) => (
-                <tr key={n.id}>
-                  <td className="mono" style={{ whiteSpace: 'nowrap' }}>
-                    {new Date(n.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td>
-                    {n.title}
-                    <br />
-                    <small className="page-sub">
-                      {n.userName} · {n.channel === 'email' ? 'письмо' : n.channel === 'sms' ? 'SMS' : 'в приложении'} · {n.status === 'sent' ? 'отправлено' : n.status === 'no_device' ? 'приложение не установлено' : 'ошибка'}
-                    </small>
-                  </td>
-                </tr>
-              ))}
-              {!log.length && (
-                <tr>
-                  <td className="page-sub">Пока пусто</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <h3>Ждут решения</h3>
+        <PendingList onDone={(m) => { toast.show(m); void load(); }} />
+        <PendingEmpty />
       </aside>
+      <CancelRideSheet ride={cancelRide} onClose={() => setCancelRide(null)} onDone={(m) => { toast.show(m); void load(); }} />
       {toast.node}
     </div>
   );
+}
+
+const CANCELLABLE = ['planned', 'confirmed', 'driver_en_route', 'driver_arrived'];
+const CANCEL_REASONS = ['Заболел', 'Заберут сами', 'Занятие отменили', 'Нет свободного водителя'];
+
+/** Отмена одной поездки диспетчером: расписание не меняется, семья получает уведомление. */
+function CancelRideSheet({ ride, onClose, onDone }: { ride: RideView | null; onClose: () => void; onDone: (msg: string) => void }) {
+  const [reason, setReason] = useState(CANCEL_REASONS[0]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!ride) return null;
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/admin/rides/${ride.id}/cancel`, { reason });
+      onDone(`Поездка ${ride.child.firstName} отменена, семья получила уведомление`);
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Не получилось');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Sheet open onClose={onClose}>
+      <h3>
+        Отменить поездку {ride.child.firstName}?
+      </h3>
+      <div className="page-sub">
+        {ride.pickupTime} · {ride.from.name} → {ride.to.name}. Только на этот день — расписание не меняется.
+      </div>
+      <div className="field">
+        <label>Причина (увидит семья)</label>
+        <div className="pick">
+          {CANCEL_REASONS.map((x) => (
+            <button key={x} type="button" className={reason === x ? 'on' : ''} onClick={() => setReason(x)}>
+              {x}
+            </button>
+          ))}
+        </div>
+      </div>
+      {error && <div className="note error">{error}</div>}
+      <button className="btn danger block" disabled={busy} onClick={() => void send()}>
+        Отменить поездку
+      </button>
+      <button className="btn secondary block" onClick={onClose}>
+        Не отменять
+      </button>
+    </Sheet>
+  );
+}
+
+function PendingEmpty() {
+  const { requests, changes } = useInbox();
+  if (changes.some((c) => c.status === 'new') || requests.some((r) => r.status === 'new')) return null;
+  return <div className="page-sub">Новых просьб и заявок нет</div>;
 }

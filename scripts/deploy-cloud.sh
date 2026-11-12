@@ -17,6 +17,8 @@ ssh() { command ssh -p "$SSH_PORT" "$@"; }
 DOMAIN="${DOMAIN:?Укажите DOMAIN — адрес сайта, например na-meste.ru}"
 PUBLIC_PORT="${PUBLIC_PORT:-443}"           # внешний порт HTTPS (если не 443, он попадёт в адрес сайта)
 REDIRECT_FROM="${REDIRECT_FROM:-}"          # старые адреса через пробел: они навсегда перенаправляются на DOMAIN
+# если адрес вставлен из мессенджера как ссылка «[www.site.ru](https://www.site.ru)», берём только сам домен
+REDIRECT_FROM=$(printf '%s' "$REDIRECT_FROM" | sed -E 's/\[([^]]+)\]\([^)]*\)/\1/g')
 REDIRECT_BLOCKS=""
 for h in $REDIRECT_FROM; do REDIRECT_BLOCKS+=$(printf '\n%s {\n\tredir https://%s{uri} permanent\n}\n' "$h" "$DOMAIN"); done
 DNS_CHALLENGE="${DNS_CHALLENGE:-}"          # duckdns — выпуск сертификата через DNS, когда порты 80/443 наружу недоступны

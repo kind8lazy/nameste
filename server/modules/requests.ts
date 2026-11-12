@@ -110,7 +110,7 @@ export async function acceptRequest(id: string) {
   materialize();
   planDay(localDate());
   planDay(addDays(localDate(), 1));
-  await notifyFamily(r.familyId, 'request', { title: 'Заявка принята', body: `Поездка ${r.time}, ${describeRule(parseRule(r.rule))} — уже в вашей неделе.`, priority: 'important' }, { url: '/app/week' });
+  await notifyFamily(r.familyId, 'request', { title: 'Заявка принята', body: `Поездка ${r.time}, ${describeRule(parseRule(r.rule))} — уже в вашей неделе.`, priority: 'important' }, { url: '/app' });
   publish(channel.family(r.familyId), 'rides', { request: id });
   return { ok: true };
 }
@@ -119,7 +119,7 @@ export async function declineRequest(id: string, answer: string) {
   const r = db.select().from(schema.rideRequests).where(eq(schema.rideRequests.id, id)).get();
   if (!r) throw new HttpError(404, 'Заявка не найдена');
   db.update(schema.rideRequests).set({ status: 'declined', answer }).where(eq(schema.rideRequests.id, id)).run();
-  await notifyFamily(r.familyId, 'request', { title: 'Заявка не принята', body: answer, priority: 'important' }, { url: '/app/week' });
+  await notifyFamily(r.familyId, 'request', { title: 'Заявка не принята', body: answer, priority: 'important' }, { url: '/app' });
   publish(channel.family(r.familyId), 'rides', { request: id });
   return { ok: true };
 }

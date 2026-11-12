@@ -17,6 +17,7 @@
     "seed": "tsx server/seed.ts",
     "bootstrap": "tsx server/bootstrap.ts",
     "invite": "tsx server/invite.ts",
+    "bot": "tsx bot/telegram-bot.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

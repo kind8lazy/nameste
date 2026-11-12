@@ -6,3 +6,4 @@ secrets.env
 *.db
 *.db-*
 .DS_Store
+bot.env

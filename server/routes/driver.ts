@@ -16,6 +16,7 @@ function ownStop(req: FastifyRequest, stopId: string) {
   if (!stop) throw new HttpError(404, 'Точка не найдена');
   const run = db.select().from(schema.runs).where(eq(schema.runs.id, stop.runId)).get();
   if (!run || run.driverId !== u.id) throw new HttpError(403, 'Это точка другого рейса');
+  if (run.date !== localDate()) throw new HttpError(400, 'Отмечать можно только сегодняшний рейс');
   return { user: u, stop, run };
 }
 
@@ -24,6 +25,7 @@ function ownRide(req: FastifyRequest, rideId: string) {
   const ride = getRide(rideId);
   const run = ride.runId ? db.select().from(schema.runs).where(eq(schema.runs.id, ride.runId)).get() : null;
   if (!run || run.driverId !== u.id) throw new HttpError(403, 'Этого ребёнка нет в вашем рейсе');
+  if (run.date !== localDate()) throw new HttpError(400, 'Отмечать можно только сегодняшний рейс');
   return { user: u, ride };
 }
 
